@@ -1,17 +1,51 @@
 Syncing Pareme from peers...
-Created blocks/pareme0000.dat with magic bytes
-0
-Wrote Block 1 to file. Difficulty: 0000010000000000
-Start Block 1 Initialized
-No existing index, 1 blocks in dat. resyncing...
-Index synced: height=1, blocks=1
-Index synced: height = 1, totalBlocks = 1
-Initializing Miner...
-Starting miner at Block 1
-Finding Nonce for Block 2, Difficulty: 0000010000000000
-Nonce 6810565 found in 2 seconds
-Mined Block 2 with Hash: 000000587026dbcc
-Broadcasting Block 2 to Pareme....
+Found existing blocks/pareme0000.dat
+1
+Starting up blockWriter...
+Found existing index, height = 47, totalBlocks = 47
+Index synced: height=47, blocks=47
+Index synced: height = 47, totalBlocks = 47
+Synced chain at height 47
 
+Initializing Miner...
+Starting miner at Block 47
+Building Block 48 with timestamp 1741820225274
+Finding Nonce for Block 48, Difficulty: 0000032000000000
+Nonce 8593930 found in 3 seconds
+Mined Block 48 with Hash: 000000245f137505
+Broadcasting Block 48 to Pareme....
+
+Wrote Block 48 to file. Difficulty: 0000032000000000
+Building Block 49 with timestamp 1741820228663
+Finding Nonce for Block 49, Difficulty: 0000032000000000
+Nonce 2485204 found in 1 seconds
+Mined Block 49 with Hash: 000002bf6c17ea11
+Broadcasting Block 49 to Pareme....
+
+Wrote Block 49 to file. Difficulty: 0000032000000000
+Building Block 50 with timestamp 1741820229658
+Finding Nonce for Block 50, Difficulty: 0000032000000000
+Nonce 3518043 found in 1 seconds
+Mined Block 50 with Hash: 000002898c62c32f
+Broadcasting Block 50 to Pareme....
+
+Wrote Block 50 to file. Difficulty: 0000032000000000
+Building Block 51 with timestamp 1741820230965
+Finding Nonce for Block 51, Difficulty: 0000032000000000
+Nonce 8088060 found in 3 seconds
+Mined Block 51 with Hash: 000000f30c27bd5a
+Broadcasting Block 51 to Pareme....
+
+Wrote Block 51 to file. Difficulty: 0000032000000000
+Building Block 52 with timestamp 1741820233965
+
+Adjusting Difficulty...
+0.564168 - Ratio
+0000032000000000 - Old Difficulty
+000001c355b573ea - New Difficulty
+
+Finding Nonce for Block 52, Difficulty: 000001c355b573ea
 Recieved 'stop' command
 Sending interrupt command to miner...
+Nonce search interrupted for Block 52
+Mining interrupted and stopped

@@ -23,36 +23,18 @@ func syncChain(blockChan chan Block, newBlockChan chan int) int {
 		startBlock := initBlock(1)
 		writeBlock(startBlock)
 		printToLog("Start Block 1 Initialized")
-		indexChan := make(chan int)
-		go blockWriter(blockChan, indexChan, newBlockChan, requestChan)
-		height := <-indexChan
-		return height
-	}
+	} else {
+		// Calculate total blocks from file size
+		filepath := "blocks/pareme0000.dat"
+		totalBlocks := getTotalBlocksFromFile(filepath)
 
-	// Calculate total blocks from file size
-	f, err := os.Open("blocks/pareme0000.dat")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error opening dat file: %v", err))
-		return -1
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		printToLog(fmt.Sprintf("Error stating dat file: %v", err))
-		return -1
-	}
-	totalBlocks := int((fi.Size() - 4) / 112)
-
-	// Verify each block
-	for i := 1; i <= totalBlocks; i++ {
-		block := readBlock(i)
-		if block.Height == 0 || !verifyBlock(block) {
-			printToLog("Invalid block or failed block reading, resetting chain")
-			resetChain()
-			indexChan := make(chan int)
-			go blockWriter(blockChan, indexChan, newBlockChan, requestChan)
-			height := <-indexChan
-			return height
+		// Verify each block
+		for i := 1; i <= totalBlocks; i++ {
+			block := readBlockFromFile(i)
+			if block.Height == 0 || !verifyBlock(block) {
+				printToLog("Invalid block or failed block reading, resetting chain")
+				resetChain()
+			}
 		}
 	}
 
@@ -191,4 +173,21 @@ func resetChain() {
 	}
 
 	printToLog("Chain reset to genesis block")
+}
+
+func getTotalBlocksFromFile(filepath string) int {
+	// Calculate total blocks from file size
+	f, err := os.Open(filepath)
+	if err != nil {
+		printToLog(fmt.Sprintf("Error opening dat file: %v", err))
+		return -1
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		printToLog(fmt.Sprintf("Error stating dat file: %v", err))
+		return -1
+	}
+	totalBlocks := int((fi.Size() - 4) / 112)
+	return totalBlocks
 }

@@ -22,7 +22,7 @@ type Block struct {
 func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]byte) Block {
 	block := Block{
 		Height:     height,
-		Timestamp:  time.Now().Unix(),
+		Timestamp:  time.Now().UnixMilli(),
 		PrevHash:   prevHash,
 		Nonce:      0,
 		Difficulty: difficulty,
@@ -34,10 +34,10 @@ func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]b
 func initBlock(height int) Block {
 	block := Block{
 		Height:     height,
-		Timestamp:  1230940800,
+		Timestamp:  1230940800000,
 		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Nonce:      0,
-		Difficulty: [32]byte{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Difficulty: [32]byte{0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		BodyHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	return block
@@ -63,8 +63,8 @@ func adjustDifficulty(i int) [32]byte {
 
 	prev10 := readBlock(i - 10)
 	currentBlock := readBlock(i)
-	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10
-	targetTime := float64(2)
+	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10000
+	targetTime := float64(2000)
 	ratio := actualTime / targetTime
 
 	if ratio < 0.25 {
@@ -109,7 +109,7 @@ func verifyBlock(b Block) bool {
 	}
 
 	// Normal block: fetch prior and validate
-	prior := readBlock(b.Height - 1)
+	prior := readBlockFromFile(b.Height - 1)
 	if prior.Height == 0 {
 		return false
 	}
@@ -136,7 +136,7 @@ func verifyBlock(b Block) bool {
 	// Timestamp check 1: > median of last 11 blocks
 	timestamps := []int64{}
 	for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
-		blk := readBlock(i)
+		blk := readBlockFromFile(i)
 		timestamps = append(timestamps, blk.Timestamp)
 	}
 	median := medianTimestamp(timestamps)
@@ -146,7 +146,7 @@ func verifyBlock(b Block) bool {
 	}
 
 	// Timestamp check 2: < now + 2 minutes
-	maxTime := time.Now().Unix() + 120
+	maxTime := time.Now().UnixMilli() + 120000
 
 	time2Verified := b.Timestamp <= maxTime
 

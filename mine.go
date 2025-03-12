@@ -112,7 +112,8 @@ func buildBlockForMining(height int) Block {
 	currentBlock := readBlock(height)
 	prevHash := hashBlock(currentBlock)
 	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
-	if height%10 == 0 {
+	printToLog(fmt.Sprintf("Building Block %d with timestamp %d", nextBlock.Height, nextBlock.Timestamp))
+	if (height-1)%10 == 0 && height != 1 {
 		nextBlock.Difficulty = adjustDifficulty(height)
 	}
 	return nextBlock
