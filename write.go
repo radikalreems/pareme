@@ -13,12 +13,7 @@ type readRequest struct {
 	Response chan Block
 }
 
-func blockWriter(blockChan <-chan Block, indexChan chan int, newBlockChan chan int, requestChan <-chan readRequest) {
-	// Initial Sync
-	height, totalBlocks := syncIndex()
-	printToLog(fmt.Sprintf("Index synced: height = %d, totalBlocks = %d", height, totalBlocks))
-	indexChan <- height
-	close(indexChan)
+func blockWriter(blockChan <-chan Block, totalBlocks int, newBlockChan chan int, requestChan <-chan readRequest) {
 
 	for {
 		select {

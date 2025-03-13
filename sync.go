@@ -11,25 +11,13 @@ var requestChan chan readRequest
 func syncChain(blockChan chan Block, newBlockChan chan int) int {
 	printToLog("Syncing Pareme from peers...")
 
-	if syncBlocksFolder() == -1 {
+	height, totalBlocks := syncFiles() // Sync folder, dat, index file
+
+	if height == -1 || height == 0 { // Sync failed
 		return -1
-	}
-
-	requestChan = make(chan readRequest, 10)
-
-	existed := syncDatFiles()
-	printToLog(fmt.Sprintf("%b", existed))
-	if existed == 0 {
-		startBlock := initBlock(1)
-		writeBlock(startBlock)
-		printToLog("Start Block 1 Initialized")
-	} else {
-		// Calculate total blocks from file size
-		filepath := "blocks/pareme0000.dat"
-		totalBlocks := getTotalBlocksFromFile(filepath)
-
+	} else if height != 1 { // File existed, needs verification, skip genesis
 		// Verify each block
-		for i := 1; i <= totalBlocks; i++ {
+		for i := 1; i <= getTotalBlocksFromFile("blocks/pareme0000.dat"); i++ {
 			block := readBlockFromFile(i)
 			if block.Height == 0 || !verifyBlock(block) {
 				printToLog("Invalid block or failed block reading, resetting chain")
@@ -39,30 +27,28 @@ func syncChain(blockChan chan Block, newBlockChan chan int) int {
 	}
 
 	// Chain is valid, start blockWriter and return height
-	indexChan := make(chan int)
 	printToLog("Starting up blockWriter...")
-	go blockWriter(blockChan, indexChan, newBlockChan, requestChan)
-	height := <-indexChan
+	requestChan = make(chan readRequest)
+	go blockWriter(blockChan, totalBlocks, newBlockChan, requestChan)
 	printToLog(fmt.Sprintf("Synced chain at height %d\n", height))
 	return height
 }
 
-func syncBlocksFolder() int {
+func syncFiles() (int, int) {
+	// Check for the blocks folder
 	if err := os.MkdirAll("blocks", 0755); err != nil {
 		printToLog(fmt.Sprintf("Error creating blocks folder: %v", err))
-		return -1
+		return -1, -1
 	}
-	return 1
-}
 
-func syncDatFiles() int {
+	// Check for the .dat file
 	filePath := "blocks/pareme0000.dat"
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		// File doesn't exist, create with magic bytes
 		f, err := os.Create(filePath)
 		if err != nil {
 			printToLog(fmt.Sprintf("Error creating %s: %v", filePath, err))
-			return -1
+			return -1, -1
 		}
 		defer f.Close()
 
@@ -70,12 +56,20 @@ func syncDatFiles() int {
 		if _, err := f.Write(magic); err != nil {
 			printToLog(fmt.Sprintf("Error writing magic bytes: %v", err))
 		}
-		printToLog(fmt.Sprintf("Created %s with magic bytes", filePath))
-		return 0 // New file
-	} else {
-		printToLog(fmt.Sprintf("Found existing %s", filePath))
-		return 1 // File Existed
+		writeBlock(initBlock(1))
+		printToLog(fmt.Sprintf("Created %s with magic bytes + genesis", filePath))
 	}
+
+	// Check for the index file
+	height, totalBlocks := syncIndex()
+	printToLog(fmt.Sprintf("Index synced: height = %d, totalBlocks = %d", height, totalBlocks))
+
+	if height == 0 || totalBlocks == 0 {
+		return -1, -1
+	}
+
+	return height, totalBlocks
+
 }
 
 func writeBlock(b Block) int {
