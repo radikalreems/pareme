@@ -36,96 +36,7 @@ func blockWriter(blockChan <-chan Block, totalBlocks int, newBlockChan chan int,
 	}
 }
 
-func syncIndex() (int, int) {
-	idxPath := "blocks/pareme.idx"
-	datPath := "blocks/pareme0000.dat"
-	height := 0
-	totalBlocks := 0
-
-	// Determine how many blocks are in .dat
-	datInfo, err := os.Stat(datPath)
-	if err != nil {
-		printToLog("No .dat file found during index sync")
-		return 0, 0
-	}
-	datBlocks := int((datInfo.Size() - 4) / 112)
-
-	// Check index file
-	f, err := os.OpenFile(idxPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
-		return 0, 0
-	}
-	defer f.Close()
-
-	// Get index file info
-	fi, _ := f.Stat()
-	if fi.Size() == 0 {
-		// No index, create from .dat
-		printToLog(fmt.Sprintf("No existing index, %d blocks in dat. resyncing...", datBlocks))
-		if datBlocks > 0 {
-			lastBlock := readBlockFromFile(datBlocks)
-			height = lastBlock.Height
-			totalBlocks = datBlocks
-		}
-		writeIndex(height, totalBlocks) // Initial full write
-	} else {
-		// Read existing index
-		buf := make([]byte, 8)
-		if _, err := f.ReadAt(buf, 0); err != nil {
-			printToLog(fmt.Sprintf("Failed to read index: %v", err))
-			return 0, 0
-		}
-		height = int(binary.BigEndian.Uint32(buf[0:4]))
-		totalBlocks = int(binary.BigEndian.Uint32(buf[4:8]))
-		printToLog(fmt.Sprintf("Found existing index, height = %d, totalBlocks = %d", height, totalBlocks))
-
-		if totalBlocks != datBlocks {
-			printToLog("Index mismatch, resyncing...")
-			height = readBlockFromFile(datBlocks).Height
-			totalBlocks = datBlocks
-			writeIndex(height, totalBlocks) // resync full write
-		}
-	}
-	printToLog(fmt.Sprintf("Index synced: height=%d, blocks=%d", height, totalBlocks))
-	return height, totalBlocks
-}
-
-func writeIndex(height, totalBlocks int) {
-	f, err := os.Create("blocks/pareme.idx")
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to create index file: %v", err))
-		return
-	}
-	defer f.Close()
-
-	buf := make([]byte, 20)
-	binary.BigEndian.PutUint32(buf[0:4], uint32(height))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(totalBlocks))
-	copy(buf[8:18], []byte("pareme0000"))
-	binary.BigEndian.PutUint16(buf[18:20], uint16(totalBlocks))
-	if _, err := f.Write(buf); err != nil {
-		printToLog(fmt.Sprintf("Failed to write index: %v", err))
-	}
-}
-
-/*
-func readIndex() (int, int) {
-	f, err := os.Open("blocks/pareme.idx")
-	if err != nil {
-		return 0, 0
-	}
-	defer f.Close()
-	var height, totalBlocks int32
-	binary.Read(f, binary.BigEndian, &height)
-	binary.Read(f, binary.BigEndian, &totalBlocks)
-	// Skip "pareme0000:count" for now, assume one file
-	return int(height), int(totalBlocks)
-}
-*/
-
 func updateIndex(height, totalBlocks int) {
-	//writeIndex(height, totalBlocks)
 	f, err := os.OpenFile("blocks/pareme.idx", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
@@ -186,3 +97,49 @@ func readBlockFromFile(height int) Block {
 	printToLog(fmt.Sprintf("No block found for height %d", height))
 	return Block{}
 }
+
+func readBlock(height int) Block {
+
+	responseChan := make(chan Block)
+	requestChan <- readRequest{Height: height, Response: responseChan}
+	return <-responseChan
+}
+
+func writeBlock(b Block) int {
+	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return -1
+	}
+	defer f.Close()
+
+	// Write Block Data (112 bytes)
+	data := make([]byte, 0, 112)
+	data = append(data, byte(b.Height>>24), byte(b.Height>>16), byte(b.Height>>8), byte(b.Height))
+	data = append(data, byte(b.Timestamp>>56), byte(b.Timestamp>>48), byte(b.Timestamp>>40), byte(b.Timestamp>>32),
+		byte(b.Timestamp>>24), byte(b.Timestamp>>16), byte(b.Timestamp>>8), byte(b.Timestamp)) // 8 bytes
+	data = append(data, b.PrevHash[:]...)                                                      // 32 bytes
+	data = append(data, byte(b.Nonce>>24), byte(b.Nonce>>16), byte(b.Nonce>>8), byte(b.Nonce)) // 4 bytes
+	data = append(data, b.Difficulty[:]...)                                                    // 32 bytes
+	data = append(data, b.BodyHash[:]...)
+
+	if _, err := f.Write(data); err != nil {
+		return -1
+	}
+	printToLog(fmt.Sprintf("Wrote Block %d to file. Difficulty: %x\n", b.Height, b.Difficulty[:8]))
+	return 1
+}
+
+/*
+func readIndex() (int, int) {
+	f, err := os.Open("blocks/pareme.idx")
+	if err != nil {
+		return 0, 0
+	}
+	defer f.Close()
+	var height, totalBlocks int32
+	binary.Read(f, binary.BigEndian, &height)
+	binary.Read(f, binary.BigEndian, &totalBlocks)
+	// Skip "pareme0000:count" for now, assume one file
+	return int(height), int(totalBlocks)
+}
+*/

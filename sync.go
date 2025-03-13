@@ -56,15 +56,14 @@ func syncFiles() (int, int) {
 		if _, err := f.Write(magic); err != nil {
 			printToLog(fmt.Sprintf("Error writing magic bytes: %v", err))
 		}
-		writeBlock(initBlock(1))
+		writeBlock(genesisBlock())
 		printToLog(fmt.Sprintf("Created %s with magic bytes + genesis", filePath))
 	}
 
 	// Check for the index file
 	height, totalBlocks := syncIndex()
-	printToLog(fmt.Sprintf("Index synced: height = %d, totalBlocks = %d", height, totalBlocks))
 
-	if height == 0 || totalBlocks == 0 {
+	if height == -1 || totalBlocks == -1 {
 		return -1, -1
 	}
 
@@ -72,69 +71,77 @@ func syncFiles() (int, int) {
 
 }
 
-func writeBlock(b Block) int {
-	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_WRONLY, 0644)
+func syncIndex() (int, int) {
+	idxPath := "blocks/pareme.idx"
+	datPath := "blocks/pareme0000.dat"
+	height := 0
+	totalBlocks := 0
+
+	// Determine how many blocks are in .dat
+	datInfo, err := os.Stat(datPath)
 	if err != nil {
-		return -1
+		printToLog("No .dat file found during index sync")
+		return -1, -1
+	}
+	datBlocks := int((datInfo.Size() - 4) / 112)
+
+	// Check index file
+	f, err := os.OpenFile(idxPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
+		return -1, -1
 	}
 	defer f.Close()
 
-	// Write Block Data (112 bytes)
-	data := make([]byte, 0, 112)
-	data = append(data, byte(b.Height>>24), byte(b.Height>>16), byte(b.Height>>8), byte(b.Height))
-	data = append(data, byte(b.Timestamp>>56), byte(b.Timestamp>>48), byte(b.Timestamp>>40), byte(b.Timestamp>>32),
-		byte(b.Timestamp>>24), byte(b.Timestamp>>16), byte(b.Timestamp>>8), byte(b.Timestamp)) // 8 bytes
-	data = append(data, b.PrevHash[:]...)                                                      // 32 bytes
-	data = append(data, byte(b.Nonce>>24), byte(b.Nonce>>16), byte(b.Nonce>>8), byte(b.Nonce)) // 4 bytes
-	data = append(data, b.Difficulty[:]...)                                                    // 32 bytes
-	data = append(data, b.BodyHash[:]...)
+	// Get index file info
+	fi, _ := f.Stat()
+	if fi.Size() == 0 {
+		// No index, create from .dat
+		printToLog(fmt.Sprintf("No existing index, %d blocks in dat. resyncing...", datBlocks))
+		if datBlocks > 0 {
+			lastBlock := readBlockFromFile(datBlocks)
+			height = lastBlock.Height
+			totalBlocks = datBlocks
+		}
+		writeIndex(height, totalBlocks) // Initial full write
+	} else {
+		// Read existing index
+		buf := make([]byte, 8)
+		if _, err := f.ReadAt(buf, 0); err != nil {
+			printToLog(fmt.Sprintf("Failed to read index: %v", err))
+			return -1, -1
+		}
+		height = int(binary.BigEndian.Uint32(buf[0:4]))
+		totalBlocks = int(binary.BigEndian.Uint32(buf[4:8]))
+		printToLog(fmt.Sprintf("Found existing index, height = %d, totalBlocks = %d", height, totalBlocks))
 
-	if _, err := f.Write(data); err != nil {
-		return -1
+		if totalBlocks != datBlocks {
+			printToLog("Index mismatch, resyncing...")
+			height = readBlockFromFile(datBlocks).Height
+			totalBlocks = datBlocks
+			writeIndex(height, totalBlocks) // resync full write
+		}
 	}
-	printToLog(fmt.Sprintf("Wrote Block %d to file. Difficulty: %x", b.Height, b.Difficulty[:8]))
-	return 1
+	printToLog(fmt.Sprintf("Index synced: height = %d, blocks = %d", height, totalBlocks))
+	return height, totalBlocks
 }
 
-func readBlock(height int) Block {
+func writeIndex(height, totalBlocks int) {
+	f, err := os.Create("blocks/pareme.idx")
+	if err != nil {
+		printToLog(fmt.Sprintf("Failed to create index file: %v", err))
+		return
+	}
+	defer f.Close()
 
-	responseChan := make(chan Block)
-	requestChan <- readRequest{Height: height, Response: responseChan}
-	return <-responseChan
-
-	/*
-		f, err := os.Open("blocks/pareme0000.dat")
-		if err != nil {
-			return Block{}
-		}
-		defer f.Close()
-
-		// Skip 4-byte magic
-		if _, err := f.Seek(4, 0); err != nil {
-			return Block{}
-		}
-
-		// Buffer for one block
-		buf := make([]byte, 112)
-		for {
-			n, err := f.Read(buf)
-			if err != nil || n != 112 {
-				return Block{}
-			}
-			height := int(buf[0])<<24 | int(buf[1])<<16 | int(buf[2])<<8 | int(buf[3])
-			if height == i {
-				return Block{
-					Height: height,
-					Timestamp: int64(buf[4])<<56 | int64(buf[5])<<48 | int64(buf[6])<<40 | int64(buf[7])<<32 |
-						int64(buf[8])<<24 | int64(buf[9])<<16 | int64(buf[10])<<8 | int64(buf[11]),
-					PrevHash:   *(*[32]byte)(buf[12:44]),
-					Nonce:      int(buf[44])<<24 | int(buf[45])<<16 | int(buf[46])<<8 | int(buf[47]),
-					Difficulty: *(*[32]byte)(buf[48:80]),
-					BodyHash:   *(*[32]byte)(buf[80:112]),
-				}
-			}
-		}
-	*/
+	buf := make([]byte, 20)
+	binary.BigEndian.PutUint32(buf[0:4], uint32(height))
+	binary.BigEndian.PutUint32(buf[4:8], uint32(totalBlocks))
+	copy(buf[8:18], []byte("pareme0000"))
+	binary.BigEndian.PutUint16(buf[18:20], uint16(totalBlocks))
+	if _, err := f.Write(buf); err != nil {
+		printToLog(fmt.Sprintf("Failed to write index: %v", err))
+	}
 }
 
 func resetChain() {
@@ -147,7 +154,7 @@ func resetChain() {
 	defer f.Close()
 	magic := []byte{0x50, 0x41, 0x52, 0x45}
 	f.Write(magic)
-	startBlock := initBlock(1)
+	startBlock := genesisBlock()
 	writeBlock(startBlock)
 
 	// Reset index file

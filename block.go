@@ -31,9 +31,9 @@ func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]b
 	return block
 }
 
-func initBlock(height int) Block {
+func genesisBlock() Block {
 	block := Block{
-		Height:     height,
+		Height:     1,
 		Timestamp:  1230940800000,
 		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Nonce:      0,
@@ -59,7 +59,7 @@ func hashBlock(b Block) [32]byte {
 
 func adjustDifficulty(i int) [32]byte {
 
-	printToLog("\nAdjusting Difficulty...")
+	printToLog("Adjusting Difficulty...")
 
 	prev10 := readBlock(i - 10)
 	currentBlock := readBlock(i)
@@ -98,7 +98,7 @@ func adjustDifficulty(i int) [32]byte {
 func verifyBlock(b Block) bool {
 	// Genesis block check
 	if b.Height == 1 {
-		genesis := initBlock(1)
+		genesis := genesisBlock()
 		genesisHash := hashBlock(genesis)
 		blockHash := hashBlock(b)
 		verified := genesisHash == blockHash

@@ -1,73 +1,72 @@
 Syncing Pareme from peers...
 Wrote Block 1 to file. Difficulty: 0000320000000000
+
 Created blocks/pareme0000.dat with magic bytes + genesis
 No existing index, 1 blocks in dat. resyncing...
-Index synced: height=1, blocks=1
-Index synced: height = 1, totalBlocks = 1
+Index synced: height = 1, blocks = 1
 Starting up blockWriter...
 Synced chain at height 1
 
 Initializing Miner...
 Starting miner at Block 1
 Finding Nonce for Block 2, Difficulty: 0000320000000000
-Nonce 638426 found in 0 seconds
-Mined Block 2 with Hash: 00002f1933ca670f
+Nonce 712011 found in 0 seconds
+Mined Block 2 with Hash: 00002ff9619cba5e
 Broadcasting Block 2 to Pareme....
-
 Wrote Block 2 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 3, Difficulty: 0000320000000000
-Nonce 32098 found in 0 seconds
-Mined Block 3 with Hash: 0000082dab4f24b3
+Nonce 549071 found in 1 seconds
+Mined Block 3 with Hash: 000008de739e23d1
 Broadcasting Block 3 to Pareme....
-
 Wrote Block 3 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 4, Difficulty: 0000320000000000
-Nonce 357321 found in 0 seconds
-Mined Block 4 with Hash: 00002a301293ecf1
+Nonce 969167 found in 0 seconds
+Mined Block 4 with Hash: 00000b5b7f4c94e6
 Broadcasting Block 4 to Pareme....
-
 Wrote Block 4 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 5, Difficulty: 0000320000000000
-Nonce 6234 found in 0 seconds
-Mined Block 5 with Hash: 00000d9b279de95b
+Nonce 227418 found in 0 seconds
+Mined Block 5 with Hash: 0000099d4c0aeb53
 Broadcasting Block 5 to Pareme....
-
 Wrote Block 5 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 6, Difficulty: 0000320000000000
-Nonce 100438 found in 1 seconds
-Mined Block 6 with Hash: 000001a3d2928683
+Nonce 394038 found in 0 seconds
+Mined Block 6 with Hash: 0000033c14fd8899
 Broadcasting Block 6 to Pareme....
-
 Wrote Block 6 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 7, Difficulty: 0000320000000000
-Nonce 35731 found in 0 seconds
-Mined Block 7 with Hash: 000008642c4efb19
+Nonce 20610 found in 0 seconds
+Mined Block 7 with Hash: 00001ba7cd49b0f5
 Broadcasting Block 7 to Pareme....
-
 Wrote Block 7 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 8, Difficulty: 0000320000000000
-Nonce 84944 found in 0 seconds
-Mined Block 8 with Hash: 0000236bcb99704b
+Nonce 392519 found in 0 seconds
+Mined Block 8 with Hash: 00002f09ff06ca95
 Broadcasting Block 8 to Pareme....
-
 Wrote Block 8 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 9, Difficulty: 0000320000000000
-Nonce 673331 found in 0 seconds
-Mined Block 9 with Hash: 000012a63af27ac0
+Nonce 274237 found in 0 seconds
+Mined Block 9 with Hash: 000014984f8555bf
 Broadcasting Block 9 to Pareme....
-
 Wrote Block 9 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 10, Difficulty: 0000320000000000
-Nonce 212990 found in 0 seconds
-Mined Block 10 with Hash: 00000a22674a841a
+Nonce 424103 found in 1 seconds
+Mined Block 10 with Hash: 000003c73471b91d
 Broadcasting Block 10 to Pareme....
-
 Wrote Block 10 to file. Difficulty: 0000320000000000
-Finding Nonce for Block 11, Difficulty: 0000320000000000
-Nonce 546360 found in 0 seconds
-Mined Block 11 with Hash: 00002ce82cb9a79e
-Broadcasting Block 11 to Pareme....
 
+Finding Nonce for Block 11, Difficulty: 0000320000000000
+Nonce 354582 found in 0 seconds
+Mined Block 11 with Hash: 000031725a3a672f
+Broadcasting Block 11 to Pareme....
 Wrote Block 11 to file. Difficulty: 0000320000000000
 
 Adjusting Difficulty...
@@ -76,64 +75,63 @@ Adjusting Difficulty...
 0000c80000000000 - New Difficulty
 
 Finding Nonce for Block 12, Difficulty: 0000c80000000000
-Nonce 70140 found in 0 seconds
-Mined Block 12 with Hash: 0000b4e147ac450d
+Nonce 11741 found in 0 seconds
+Mined Block 12 with Hash: 0000b594b04077cf
 Broadcasting Block 12 to Pareme....
-
 Wrote Block 12 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 13, Difficulty: 0000c80000000000
-Nonce 3856 found in 0 seconds
-Mined Block 13 with Hash: 0000c6252b1c0198
+Nonce 44231 found in 0 seconds
+Mined Block 13 with Hash: 00002b736c41c1fa
 Broadcasting Block 13 to Pareme....
-
 Wrote Block 13 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 14, Difficulty: 0000c80000000000
-Nonce 7747 found in 0 seconds
-Mined Block 14 with Hash: 00008cf587033c74
+Nonce 59269 found in 0 seconds
+Mined Block 14 with Hash: 0000269765b4d3bf
 Broadcasting Block 14 to Pareme....
-
 Wrote Block 14 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 15, Difficulty: 0000c80000000000
-Nonce 106674 found in 0 seconds
-Mined Block 15 with Hash: 0000a21b15b97525
+Nonce 367967 found in 0 seconds
+Mined Block 15 with Hash: 0000a98d2f936873
 Broadcasting Block 15 to Pareme....
-
 Wrote Block 15 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 16, Difficulty: 0000c80000000000
-Nonce 60777 found in 0 seconds
-Mined Block 16 with Hash: 00009e8549bf15e7
+Nonce 366417 found in 0 seconds
+Mined Block 16 with Hash: 000086bf0bf60085
 Broadcasting Block 16 to Pareme....
-
 Wrote Block 16 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 17, Difficulty: 0000c80000000000
-Nonce 474024 found in 0 seconds
-Mined Block 17 with Hash: 00000c531fbc918f
+Nonce 94072 found in 0 seconds
+Mined Block 17 with Hash: 00004cde159ac5e6
 Broadcasting Block 17 to Pareme....
-
 Wrote Block 17 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 18, Difficulty: 0000c80000000000
-Nonce 303467 found in 1 seconds
-Mined Block 18 with Hash: 00008d67e334af2c
+Nonce 305012 found in 0 seconds
+Mined Block 18 with Hash: 00008bab2aa94827
 Broadcasting Block 18 to Pareme....
-
 Wrote Block 18 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 19, Difficulty: 0000c80000000000
-Nonce 41807 found in 0 seconds
-Mined Block 19 with Hash: 00000121b361be5e
+Nonce 84416 found in 0 seconds
+Mined Block 19 with Hash: 00009f0de8fc58db
 Broadcasting Block 19 to Pareme....
-
 Wrote Block 19 to file. Difficulty: 0000c80000000000
+
 Finding Nonce for Block 20, Difficulty: 0000c80000000000
-Nonce 23202 found in 0 seconds
-Mined Block 20 with Hash: 0000789efc67a433
+Nonce 127590 found in 0 seconds
+Mined Block 20 with Hash: 0000a6196505652c
 Broadcasting Block 20 to Pareme....
-
 Wrote Block 20 to file. Difficulty: 0000c80000000000
-Finding Nonce for Block 21, Difficulty: 0000c80000000000
-Nonce 60722 found in 0 seconds
-Mined Block 21 with Hash: 0000989c214d6c3f
-Broadcasting Block 21 to Pareme....
 
+Finding Nonce for Block 21, Difficulty: 0000c80000000000
+Nonce 197744 found in 0 seconds
+Mined Block 21 with Hash: 000055648dda9850
+Broadcasting Block 21 to Pareme....
 Wrote Block 21 to file. Difficulty: 0000c80000000000
 
 Adjusting Difficulty...
@@ -142,64 +140,63 @@ Adjusting Difficulty...
 0000320000000000 - New Difficulty
 
 Finding Nonce for Block 22, Difficulty: 0000320000000000
-Nonce 78814 found in 0 seconds
-Mined Block 22 with Hash: 000015bd85c439fd
+Nonce 140492 found in 0 seconds
+Mined Block 22 with Hash: 00001d9fda348594
 Broadcasting Block 22 to Pareme....
-
 Wrote Block 22 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 23, Difficulty: 0000320000000000
-Nonce 263001 found in 0 seconds
-Mined Block 23 with Hash: 000030a628dd3d00
+Nonce 863132 found in 1 seconds
+Mined Block 23 with Hash: 0000059725c8ee70
 Broadcasting Block 23 to Pareme....
-
 Wrote Block 23 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 24, Difficulty: 0000320000000000
-Nonce 337972 found in 0 seconds
-Mined Block 24 with Hash: 00002661ea5152e1
+Nonce 245468 found in 0 seconds
+Mined Block 24 with Hash: 00000cef029cdc08
 Broadcasting Block 24 to Pareme....
-
 Wrote Block 24 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 25, Difficulty: 0000320000000000
-Nonce 135328 found in 0 seconds
-Mined Block 25 with Hash: 00000ee93f970ce4
+Nonce 106042 found in 0 seconds
+Mined Block 25 with Hash: 0000292ef51450a0
 Broadcasting Block 25 to Pareme....
-
 Wrote Block 25 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 26, Difficulty: 0000320000000000
-Nonce 113868 found in 0 seconds
-Mined Block 26 with Hash: 00002cfa7e037cc9
+Nonce 45664 found in 0 seconds
+Mined Block 26 with Hash: 00002f0e25a91d69
 Broadcasting Block 26 to Pareme....
-
 Wrote Block 26 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 27, Difficulty: 0000320000000000
-Nonce 154992 found in 0 seconds
-Mined Block 27 with Hash: 00000f7a3b68713e
+Nonce 241888 found in 0 seconds
+Mined Block 27 with Hash: 00000266b2ea13d9
 Broadcasting Block 27 to Pareme....
-
 Wrote Block 27 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 28, Difficulty: 0000320000000000
-Nonce 584698 found in 0 seconds
-Mined Block 28 with Hash: 000009d7dcf34ee2
+Nonce 406587 found in 0 seconds
+Mined Block 28 with Hash: 00000edca8ff2fc1
 Broadcasting Block 28 to Pareme....
-
 Wrote Block 28 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 29, Difficulty: 0000320000000000
-Nonce 154261 found in 0 seconds
-Mined Block 29 with Hash: 0000147858859d03
+Nonce 414932 found in 0 seconds
+Mined Block 29 with Hash: 000000cf531b3768
 Broadcasting Block 29 to Pareme....
-
 Wrote Block 29 to file. Difficulty: 0000320000000000
+
 Finding Nonce for Block 30, Difficulty: 0000320000000000
-Nonce 257044 found in 0 seconds
-Mined Block 30 with Hash: 000025795c7226dc
+Nonce 145428 found in 0 seconds
+Mined Block 30 with Hash: 00002cc318f49e22
 Broadcasting Block 30 to Pareme....
-
 Wrote Block 30 to file. Difficulty: 0000320000000000
-Finding Nonce for Block 31, Difficulty: 0000320000000000
-Nonce 245228 found in 0 seconds
-Mined Block 31 with Hash: 00000fd5ac118ab1
-Broadcasting Block 31 to Pareme....
 
+Finding Nonce for Block 31, Difficulty: 0000320000000000
+Nonce 101264 found in 0 seconds
+Mined Block 31 with Hash: 000027bfc8a87a7b
+Broadcasting Block 31 to Pareme....
 Wrote Block 31 to file. Difficulty: 0000320000000000
 
 Adjusting Difficulty...
@@ -208,25 +205,61 @@ Adjusting Difficulty...
 00000c8000000000 - New Difficulty
 
 Finding Nonce for Block 32, Difficulty: 00000c8000000000
-Nonce 1171606 found in 1 seconds
-Mined Block 32 with Hash: 000006799b60f0e8
+Nonce 355398 found in 1 seconds
+Mined Block 32 with Hash: 0000084dc8a8e422
 Broadcasting Block 32 to Pareme....
-
 Wrote Block 32 to file. Difficulty: 00000c8000000000
+
 Finding Nonce for Block 33, Difficulty: 00000c8000000000
-Nonce 1552930 found in 1 seconds
-Mined Block 33 with Hash: 00000453e21d7e0c
+Nonce 622012 found in 0 seconds
+Mined Block 33 with Hash: 00000457ad57c749
 Broadcasting Block 33 to Pareme....
-
 Wrote Block 33 to file. Difficulty: 00000c8000000000
-Finding Nonce for Block 34, Difficulty: 00000c8000000000
-Nonce 36937 found in 0 seconds
-Mined Block 34 with Hash: 000002a7328e12d6
-Broadcasting Block 34 to Pareme....
 
+Finding Nonce for Block 34, Difficulty: 00000c8000000000
+Nonce 1091590 found in 0 seconds
+Mined Block 34 with Hash: 000005ff4d348021
+Broadcasting Block 34 to Pareme....
 Wrote Block 34 to file. Difficulty: 00000c8000000000
+
 Finding Nonce for Block 35, Difficulty: 00000c8000000000
+Nonce 1322048 found in 1 seconds
+Mined Block 35 with Hash: 000004686aa40085
+Broadcasting Block 35 to Pareme....
+Wrote Block 35 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 36, Difficulty: 00000c8000000000
+Nonce 110696 found in 0 seconds
+Mined Block 36 with Hash: 0000028df5a63ad3
+Broadcasting Block 36 to Pareme....
+Wrote Block 36 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 37, Difficulty: 00000c8000000000
+Nonce 53359 found in 0 seconds
+Mined Block 37 with Hash: 000000401d938ff7
+Broadcasting Block 37 to Pareme....
+Wrote Block 37 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 38, Difficulty: 00000c8000000000
+Nonce 6692220 found in 2 seconds
+Mined Block 38 with Hash: 000006c34c88a840
+Broadcasting Block 38 to Pareme....
+Wrote Block 38 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 39, Difficulty: 00000c8000000000
+Nonce 1735163 found in 1 seconds
+Mined Block 39 with Hash: 0000056d23d6e5b1
+Broadcasting Block 39 to Pareme....
+Wrote Block 39 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 40, Difficulty: 00000c8000000000
+Nonce 435119 found in 0 seconds
+Mined Block 40 with Hash: 000000f0d84afe2d
+Broadcasting Block 40 to Pareme....
+Wrote Block 40 to file. Difficulty: 00000c8000000000
+
+Finding Nonce for Block 41, Difficulty: 00000c8000000000
 Recieved 'stop' command
 Sending interrupt command to miner...
-Nonce search interrupted for Block 35
+Nonce search interrupted for Block 41
 Mining interrupted and stopped

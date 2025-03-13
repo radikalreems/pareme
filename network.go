@@ -5,5 +5,5 @@ import (
 )
 
 func broadcastBlock(height int) {
-	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....\n", height))
+	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", height))
 }
