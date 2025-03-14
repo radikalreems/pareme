@@ -1,24 +1,32 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sync"
 )
 
-var requestChan chan readRequest
+//var requestChan chan readRequest
 
-func syncChain(blockChan chan Block, newBlockChan chan int) int {
+func syncChain(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block, newBlockChan chan int) (int, chan readRequest) {
 	printToLog("Syncing Pareme from peers...")
 
 	height, totalBlocks := syncFiles() // Sync folder, dat, index file
 
 	if height == -1 || height == 0 { // Sync failed
-		return -1
+		return -1, nil
 	} else if height != 1 { // File existed, needs verification, skip genesis
+		f, err := os.Open("blocks/pareme0000.dat")
+		if err != nil {
+			printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
+			return -1, nil
+		}
+		defer f.Close()
 		// Verify each block
 		for i := 1; i <= getTotalBlocksFromFile("blocks/pareme0000.dat"); i++ {
-			block := readBlockFromFile(i)
+			block := readBlockFromFile(f, i)
 			if block.Height == 0 || !verifyBlock(block) {
 				printToLog("Invalid block or failed block reading, resetting chain")
 				resetChain()
@@ -28,10 +36,13 @@ func syncChain(blockChan chan Block, newBlockChan chan int) int {
 
 	// Chain is valid, start blockWriter and return height
 	printToLog("Starting up blockWriter...")
-	requestChan = make(chan readRequest)
-	go blockWriter(blockChan, totalBlocks, newBlockChan, requestChan)
+	requestChan := make(chan readRequest)
+
+	blockWriter(ctx, wg, blockChan, totalBlocks, newBlockChan, requestChan)
+
+	//go blockWriter(blockChan, totalBlocks, newBlockChan, requestChan)
 	printToLog(fmt.Sprintf("Synced chain at height %d\n", height))
-	return height
+	return height, requestChan
 }
 
 func syncFiles() (int, int) {
@@ -56,7 +67,7 @@ func syncFiles() (int, int) {
 		if _, err := f.Write(magic); err != nil {
 			printToLog(fmt.Sprintf("Error writing magic bytes: %v", err))
 		}
-		writeBlock(genesisBlock())
+		writeBlock(f, genesisBlock())
 		printToLog(fmt.Sprintf("Created %s with magic bytes + genesis", filePath))
 	}
 
@@ -77,6 +88,22 @@ func syncIndex() (int, int) {
 	height := 0
 	totalBlocks := 0
 
+	// Open Dat File
+	fd, err := os.Open("blocks/pareme0000.dat")
+	if err != nil {
+		printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
+		return -1, -1
+	}
+	defer fd.Close()
+
+	// Open Index File
+	f, err := os.OpenFile(idxPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
+		return -1, -1
+	}
+	defer f.Close()
+
 	// Determine how many blocks are in .dat
 	datInfo, err := os.Stat(datPath)
 	if err != nil {
@@ -85,21 +112,13 @@ func syncIndex() (int, int) {
 	}
 	datBlocks := int((datInfo.Size() - 4) / 112)
 
-	// Check index file
-	f, err := os.OpenFile(idxPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
-		return -1, -1
-	}
-	defer f.Close()
-
 	// Get index file info
 	fi, _ := f.Stat()
 	if fi.Size() == 0 {
 		// No index, create from .dat
 		printToLog(fmt.Sprintf("No existing index, %d blocks in dat. resyncing...", datBlocks))
 		if datBlocks > 0 {
-			lastBlock := readBlockFromFile(datBlocks)
+			lastBlock := readBlockFromFile(fd, datBlocks)
 			height = lastBlock.Height
 			totalBlocks = datBlocks
 		}
@@ -117,7 +136,7 @@ func syncIndex() (int, int) {
 
 		if totalBlocks != datBlocks {
 			printToLog("Index mismatch, resyncing...")
-			height = readBlockFromFile(datBlocks).Height
+			height = readBlockFromFile(fd, datBlocks).Height
 			totalBlocks = datBlocks
 			writeIndex(height, totalBlocks) // resync full write
 		}
@@ -155,7 +174,7 @@ func resetChain() {
 	magic := []byte{0x50, 0x41, 0x52, 0x45}
 	f.Write(magic)
 	startBlock := genesisBlock()
-	writeBlock(startBlock)
+	writeBlock(f, startBlock)
 
 	// Reset index file
 	idx, err := os.Create("blocks/pareme.idx")

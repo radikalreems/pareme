@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"sync"
 	"time"
 )
 
-func minerManager(startChan chan int, stopChan chan struct{}, doneChan chan struct{}, blockChan chan Block, newBlockChan chan int) {
-	currentHeight := <-startChan // Receive latest height, start mining
+func minerManager(ctx context.Context, wg *sync.WaitGroup, startHeight int, blockChan chan Block, newBlockChan chan int, requestChan chan readRequest) {
+	currentHeight := startHeight // Receive latest height, start mining
 
 	// Mining channels
 	miningStartChan := make(chan Block)           // Passes block to start mining
@@ -19,44 +21,48 @@ func minerManager(startChan chan int, stopChan chan struct{}, doneChan chan stru
 
 	var newHeights []int // slice for new block heights
 
-	// Start on first block
-	nextBlock := buildBlockForMining(currentHeight)
-	miningStartChan <- nextBlock
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	for {
-		select {
-		// If stop trigger recieved, close out miner
-		case <-stopChan:
-			printToLog("Sending interrupt command to miner...")
-			miningInterruptChan <- struct{}{} // Buffered
-			block := <-miningResultChan       // Wait for finished miner
-			if block.Nonce == -1 {
-				printToLog("Mining interrupted and stopped")
-			} else { // rare but possible
-				printToLog("Mining completed block before stopping")
-			}
-			doneChan <- struct{}{} // Inform main that mining has closed out
-			return
-		// Listen for new blocks being written to give latest to miner when ready
-		case height := <-newBlockChan:
-			newHeights = append(newHeights, height)
-			maxHeight := max(newHeights)
-			if maxHeight >= currentHeight+2 { // Scrap if 2+ blocks ahead
+		// Start miner on the lastest initialized height
+		nextBlock := buildBlockForMining(currentHeight, requestChan)
+		miningStartChan <- nextBlock
+
+		for {
+			select {
+			// Shutoff miner
+			case <-ctx.Done():
 				miningInterruptChan <- struct{}{}
-				<-miningResultChan // Wait for result and clear it
+				block := <-miningResultChan
+				if block.Nonce == -1 {
+					printToLog("Mining interrupted")
+				} else { // rare but possible
+					printToLog("Mining completed block before stopping")
+				}
+				printToLog("Miner shutting down")
+				return
+			// When miner finds a block, send it off to writer and broadcast
+			case block := <-miningResultChan:
+				hash := hashBlock(block)
+				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x", block.Height, hash[:8]))
+				blockChan <- block
+				broadcastBlock(block.Height)
+			// New blocks appeared, keep track to give miner most recent
+			case height := <-newBlockChan:
+				newHeights = append(newHeights, height)
+				maxHeight := max(newHeights)
+				if maxHeight >= currentHeight+2 { // Scrap if 2+ blocks ahead
+					miningInterruptChan <- struct{}{}
+					<-miningResultChan // Wait for result and clear it
+				}
+				currentHeight = maxHeight
+				nextBlock := buildBlockForMining(currentHeight, requestChan)
+				miningStartChan <- nextBlock // Start new mining job
+				newHeights = nil             // Wipe slice
 			}
-			currentHeight = maxHeight
-			nextBlock := buildBlockForMining(currentHeight)
-			miningStartChan <- nextBlock // Start new mining job
-			newHeights = nil             // Wipe slice
-		// When miner finds a block, send it off to writer and broadcast
-		case block := <-miningResultChan:
-			hash := hashBlock(block)
-			printToLog(fmt.Sprintf("Mined Block %d with Hash: %x", block.Height, hash[:8]))
-			blockChan <- block
-			broadcastBlock(block.Height)
 		}
-	}
+	}()
 }
 
 func mining(startChan <-chan Block, interruptChan <-chan struct{}, resultChan chan<- Block) {
@@ -69,6 +75,7 @@ func mining(startChan <-chan Block, interruptChan <-chan struct{}, resultChan ch
 
 		// If interrupted, just loop back to wait for next task
 	}
+
 }
 
 func findNonce(b Block, interruptChan <-chan struct{}) int {
@@ -108,12 +115,12 @@ func max(heights []int) int {
 	return maxH
 }
 
-func buildBlockForMining(height int) Block {
-	currentBlock := readBlock(height)
+func buildBlockForMining(height int, requestChan chan readRequest) Block {
+	currentBlock := readBlock(height, requestChan)
 	prevHash := hashBlock(currentBlock)
 	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
 	if (height-1)%10 == 0 && height != 1 {
-		nextBlock.Difficulty = adjustDifficulty(height)
+		nextBlock.Difficulty = adjustDifficulty(height, requestChan)
 	}
 	return nextBlock
 }

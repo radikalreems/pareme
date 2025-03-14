@@ -2,10 +2,11 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
-	"time"
+	"sync"
 )
 
 var blockChan chan Block
@@ -13,9 +14,11 @@ var newBlockChan chan int
 
 func main() {
 	fmt.Println("Starting Pareme...")
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
 
-	// Starts goroutine that prints to .log
-	initPrinter()
+	// Initializes and starts printer who manages prints to .log
+	initPrinter(ctx, &wg)
 
 	// Writer Channels
 	blockChan = make(chan Block, 100) // Blocks to be verified and written
@@ -23,34 +26,37 @@ func main() {
 
 	// Syncs dat & index file and retrieves latest height
 	// Starts goroutine that verifies, writes, and indexes new blocks
-	height := syncChain(blockChan, newBlockChan)
+	height, requestChan := syncChain(ctx, &wg, blockChan, newBlockChan)
+	if height == -1 {
+		fmt.Println("Sync failed, exiting...")
+		cancel()
+		wg.Wait()
+		return
+	}
 
-	// Miner Channels
-	startChan := make(chan int)     // Triggers miner to start with latest height
-	stopChan := make(chan struct{}) // Triggers miner to stop
-	doneChan := make(chan struct{}) // Verifies miner stopped
-
-	// Starts miner manager
-	// Starts goroutine that mines for nonce
 	printToLog("Initializing Miner...")
-	go minerManager(startChan, stopChan, doneChan, blockChan, newBlockChan)
+
+	minerManager(ctx, &wg, height, blockChan, newBlockChan, requestChan)
+
 	printToLog(fmt.Sprintf("Starting miner at Block %d", height))
-	startChan <- height
 
 	// Console loop watching for commands ('stop')
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Pareme> ")
-		input, _ := reader.ReadString('\n')
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			printToLog(fmt.Sprintf("Input error: %v", err))
+			break
+		}
 		input = strings.TrimSpace(input)
 
 		switch input {
 		case "stop":
 			printToLog("Recieved 'stop' command")
-			stopChan <- struct{}{} // Send stop to miner
-			<-doneChan             // Wait for miner stop confirmation
+			cancel()
+			wg.Wait()
 			fmt.Println("Stopping Pareme...")
-			time.Sleep(1 * time.Second) // Give a sec for prints to clear
 			return
 		default:
 			fmt.Println("Unknown command. Try 'stop'")

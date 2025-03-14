@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	//"path/filepath"
 )
 
@@ -13,27 +15,40 @@ type readRequest struct {
 	Response chan Block
 }
 
-func blockWriter(blockChan <-chan Block, totalBlocks int, newBlockChan chan int, requestChan <-chan readRequest) {
-
-	for {
-		select {
-		case block := <-blockChan:
-			if !verifyBlock(block) {
-				printToLog(fmt.Sprintf("Invalid block at height %d", block.Height))
-				continue
-			}
-			if writeBlock(block) == -1 {
-				printToLog(fmt.Sprintf("failed to write block %d", block.Height))
-				continue
-			}
-			updateIndex(block.Height, totalBlocks+1)
-			newBlockChan <- block.Height // Notify miners
-			totalBlocks++
-		case req := <-requestChan:
-			block := readBlockFromFile(req.Height)
-			req.Response <- block
-		}
+func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block, totalBlocks int, newBlockChan chan int, requestChan <-chan readRequest) {
+	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		printToLog(fmt.Sprintf("Failed to open dat file: %v", err))
+		return
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer f.Close()
+		for {
+			select {
+			case block := <-blockChan:
+				if !verifyBlock(block) {
+					printToLog(fmt.Sprintf("Invalid block at height %d", block.Height))
+					continue
+				}
+				if writeBlock(f, block) == -1 {
+					printToLog(fmt.Sprintf("failed to write block %d", block.Height))
+					continue
+				}
+				updateIndex(block.Height, totalBlocks+1)
+				newBlockChan <- block.Height // Notify miners
+				totalBlocks++
+			case req := <-requestChan:
+				block := readBlockFromFile(f, req.Height)
+				req.Response <- block
+			case <-ctx.Done():
+				printToLog("Block writer shutting down")
+				return
+			}
+		}
+	}()
 }
 
 func updateIndex(height, totalBlocks int) {
@@ -55,13 +70,15 @@ func updateIndex(height, totalBlocks int) {
 	}
 }
 
-func readBlockFromFile(height int) Block {
-	f, err := os.Open("blocks/pareme0000.dat")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
-		return Block{}
-	}
-	defer f.Close()
+func readBlockFromFile(f *os.File, height int) Block {
+	/*
+		f, err := os.Open("blocks/pareme0000.dat")
+		if err != nil {
+			printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
+			return Block{}
+		}
+		defer f.Close()
+	*/
 
 	if _, err := f.Seek(4, 0); err != nil {
 		printToLog(fmt.Sprintf("Error seeking past magic: %v", err))
@@ -98,19 +115,21 @@ func readBlockFromFile(height int) Block {
 	return Block{}
 }
 
-func readBlock(height int) Block {
+func readBlock(height int, requestChan chan readRequest) Block {
 
 	responseChan := make(chan Block)
 	requestChan <- readRequest{Height: height, Response: responseChan}
 	return <-responseChan
 }
 
-func writeBlock(b Block) int {
-	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return -1
-	}
-	defer f.Close()
+func writeBlock(f *os.File, b Block) int {
+	/*
+		f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return -1
+		}
+		defer f.Close()
+	*/
 
 	// Write Block Data (112 bytes)
 	data := make([]byte, 0, 112)
