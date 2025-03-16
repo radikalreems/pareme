@@ -7,12 +7,16 @@ import (
 	"time"
 )
 
+// printChan buffers log messages to be written to the log file
 var printChan chan string
 
+// initPrinter starts a goroutine to handle logging to pareme.log
 func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
-	// delete existing pareme.log
+	// Truncate existing log file if it exists
 	if _, err := os.Stat("pareme.log"); err == nil {
-		os.Truncate("pareme.log", 0)
+		if err := os.Truncate("pareme.log", 0); err != nil {
+			panic("Failed to truncate pareme.log" + err.Error())
+		}
 	}
 
 	// Open log file in append mode
@@ -21,6 +25,7 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 		panic("failed to open pareme.log: " + err.Error())
 	}
 
+	// Initialize print channel with buffer
 	printChan = make(chan string, 100)
 
 	wg.Add(1)
@@ -32,12 +37,13 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 		for {
 			select {
 			case msg := <-printChan:
+				// Write log message to file
 				if _, err := f.WriteString(msg + "\n"); err != nil {
-					continue
+					continue // Skip failed writes silently
 				}
 			case <-ctx.Done():
-				// Drain remaining messages
-				time.Sleep(2 * time.Second)
+				// Drain remaining messages before shutdown
+				time.Sleep(2 * time.Second) // Allow time for new messages
 				for len(printChan) > 0 {
 					if msg, ok := <-printChan; ok {
 						f.WriteString(msg + "\n")
@@ -50,9 +56,10 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 	}()
 }
 
+// printToLog sends a message to the log file via the print channel
 func printToLog(s string) {
 	select {
-	case printChan <- s:
-	case <-time.After(1 * time.Second):
+	case printChan <- s: // Send message to printer
+	case <-time.After(1 * time.Second): // Drop message if channel is full after 1s
 	}
 }
