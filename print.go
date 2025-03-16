@@ -49,7 +49,7 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 						f.WriteString(msg + "\n")
 					}
 				}
-				f.WriteString("Printer is shutting down")
+				f.WriteString("Printer shutting down")
 				return
 			}
 		}

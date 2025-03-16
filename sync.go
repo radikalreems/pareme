@@ -9,7 +9,7 @@ import (
 )
 
 // syncChain synchronizes the blockchain from files and starts the block writer
-func syncChain(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block, newBlockChan chan Block) (int, chan readRequest) {
+func syncChain(ctx context.Context, wg *sync.WaitGroup) (int, chan Block) {
 	printToLog("Syncing Pareme from peers...")
 
 	// Sync blockchain files and retrieve current height and total blocks
@@ -39,11 +39,11 @@ func syncChain(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block, ne
 
 	// Chain is valid; start the block writer goroutine
 	printToLog("Starting up blockWriter...")
-	requestChan := make(chan readRequest)
-	blockWriter(ctx, wg, blockChan, totalBlocks, newBlockChan, requestChan)
+	//requestChan := make(chan readRequest)
+	newBlockChan := blockWriter(ctx, wg, blockChan, totalBlocks)
 
 	printToLog(fmt.Sprintf("Synced chain at height %d\n", height))
-	return height, requestChan
+	return height, newBlockChan
 }
 
 // syncFiles initializes or synchronizes blockchain data files (.dat and .idx)

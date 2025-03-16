@@ -17,13 +17,15 @@ type readRequest struct {
 }
 
 // blockWriter processes incoming blocks and read requests, updating the blockchain files
-func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block, totalBlocks int, newBlockChan chan Block, requestChan <-chan readRequest) {
+func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block, totalBlocks int) chan Block {
 	// Open .dat file for reading and appending
 	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		printToLog(fmt.Sprintf("Failed to open dat file: %v", err))
-		return
+		return nil
 	}
+
+	newBlockChan := make(chan Block, 10) // Send new blocks to miner
 
 	wg.Add(1)
 	go func() {
@@ -64,6 +66,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block
 			}
 		}
 	}()
+	return newBlockChan
 }
 
 // updateIndex updates the index file with the latest height and total block count

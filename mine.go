@@ -8,16 +8,18 @@ import (
 	"time"
 )
 
-func minerManager(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block, newBlockChan chan Block, requestChan chan readRequest) chan int {
+func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Block) chan int {
+	printToLog("Initializing Miner...")
 
 	// Channels for mining coordination
 	miningStartChan := make(chan Block)           // Sends blocks to start mining
 	miningInterruptChan := make(chan struct{}, 1) // Signals mining interruption
+	miningStopChan := make(chan int)              // Signals mining to stop
 	miningResultChan := make(chan Block)          // Revieves mined blocks
-	consoleMineChan := make(chan int)
+	consoleMineChan := make(chan int)             // Connect with console
 
 	// Start the mining goroutine
-	go mining(miningStartChan, miningInterruptChan, miningResultChan)
+	go mining(miningStartChan, miningInterruptChan, miningResultChan, miningStopChan)
 
 	var newHeights []int // Stores incoming block heights for chain updates
 
@@ -33,6 +35,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block,
 				// Shutdown triggered by context cancellation
 				if !isMining {
 					printToLog("Miner shutting down")
+					miningStopChan <- 1
 					return
 				}
 				miningInterruptChan <- struct{}{}
@@ -98,12 +101,16 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, blockChan chan Block,
 }
 
 // mining runs a loop to process blocks for mining
-func mining(startChan <-chan Block, interruptChan <-chan struct{}, resultChan chan<- Block) {
+func mining(startChan <-chan Block, interruptChan <-chan struct{}, resultChan chan<- Block, miningStopChan <-chan int) {
 	for {
-		block := <-startChan // Wait for a block to mine
-		nonce := findNonce(block, interruptChan)
-		block.Nonce = nonce
-		resultChan <- block // Send mined block back
+		select {
+		case block := <-startChan: // Wait for a block to mine
+			nonce := findNonce(block, interruptChan)
+			block.Nonce = nonce
+			resultChan <- block // Send mined block back
+		case <-miningStopChan:
+			return
+		}
 	}
 
 }
