@@ -1,15 +1,15 @@
 Syncing Pareme from peers...
-Found existing index, height = 160, totalBlocks = 160
-Index synced: height = 160, blocks = 160
+Found existing index, height = 61, totalBlocks = 61
+Index synced: height = 61, blocks = 61
+Network listening on :8080
 Starting up blockWriter...
-Synced chain at height 160
+Synced chain at height 61
 
 Initializing Miner...
-Network listening on :8080
 Recieved 'stop' command
 Block writer shutting down
 Miner shutting down
-ConnMaker Shutting Down
 Network shutting down
+peerMaker Shutting Down
 Listener closed
 Printer shutting down

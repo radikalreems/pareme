@@ -25,6 +25,9 @@ func main() {
 	// Initialize the printer for logging to .log file
 	initPrinter(ctx, &wg)
 
+	// Start the networking goroutine
+	dialIPChan := networkManager(ctx, &wg)
+
 	// Sync chain data and start block verification/writing goroutine
 	height, newBlockChan := syncChain(ctx, &wg)
 	if height == -1 {
@@ -35,9 +38,6 @@ func main() {
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := minerManager(ctx, &wg, newBlockChan)
-
-	// Start the networking goroutine
-	netChan := networkManager(ctx, &wg)
 
 	// Console command loop
 	reader := bufio.NewReader(os.Stdin)
@@ -70,7 +70,7 @@ func main() {
 			}
 			ip := strings.TrimSpace(input[11:])
 			printToLog(fmt.Sprintf("Connecting to IP: %s", ip))
-			netChan <- ip
+			dialIPChan <- ip
 		default:
 			fmt.Println("Unknown command. Try 'stop'")
 		}
