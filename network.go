@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -35,7 +36,7 @@ var AllPeers []Peer
 type Message struct {
 	Size        uint16 // Total length of the message, 2 bytes
 	Kind        uint8  // Request(0) or Response(1), 1 bytes
-	Command     uint8  // Specific action (e.g., if a request then 1=latest height, 3=range of blocks), 1 byte
+	Command     uint8  // Specific action (e.g., if a request then 1=latest height, 2=block request), 1 byte
 	Reference   uint16 // Unique ID set by requester, echoed in response, 2 bytes
 	PayloadSize uint16 // Length of the payload only, 2 bytes
 	Payload     []byte // Variable-length data (heights, blocks, etc.)
@@ -405,5 +406,68 @@ func SerializeMessage(msg Message) []byte {
 }
 
 func respondToMessage(request Message) Message {
-	return newMessage(1, 0, request.Reference, nil)
+	switch request.Command {
+	case 0: // Ping request
+		// No payload, simple pong response
+		return newMessage(1, 0, request.Reference, nil)
+
+	case 1: // Height request
+		// No payload, return current chain height as 4-byte uint32
+		height, _ := readIndex() // Ignore totalBlocks
+		buf := make([]byte, 4)
+		binary.BigEndian.PutUint32(buf, uint32(height))
+		return newMessage(1, 1, request.Reference, buf)
+
+	case 2: // Block range request
+		if len(request.Payload) != 8 {
+			printToLog(fmt.Sprintf("Invalid payload size for ref %d: got %d, want 8",
+				request.Reference, len(request.Payload)))
+			return Message{}
+		}
+
+		startHeight := int(binary.BigEndian.Uint32(request.Payload[0:4]))
+		endHeight := int(binary.BigEndian.Uint32(request.Payload[4:8]))
+
+		if startHeight > endHeight {
+			printToLog(fmt.Sprintf("Invalid range for ref %d: start %d > end %d",
+				request.Reference, startHeight, endHeight))
+			return Message{}
+		}
+
+		// Collect blocks in range (inclusive)
+		var payload []byte
+		for h := startHeight; h <= endHeight; h++ {
+			result := readBlock(h)
+			rawBytes := result[1].([]byte) // Element 1 is the []byte
+			if rawBytes == nil {
+				printToLog(fmt.Sprintf("Block %d not found for ref %d", h, request.Reference))
+				return Message{}
+			}
+			payload = append(payload, rawBytes...)
+		}
+
+		// Return response with all block data
+		return newMessage(1, 2, request.Reference, payload)
+	}
+
+	// Unknown command
+	printToLog(fmt.Sprintf("Unknown command %d for ref %d", request.Command, request.Reference))
+	return Message{}
+}
+
+var nextReferenceNumber uint16 = 0 // Next reference number to use for request messages
+
+func requestAMessage(command uint8, payload []byte) Message {
+	msg := newMessage(0, command, nextReferenceNumber, payload)
+	nextReferenceNumber++
+
+	msgChan := make(chan Message)
+	msgReq := MessageRequest{
+		Message:         msg,
+		MsgResponseChan: msgChan,
+	}
+	AllPeers[0].SendChan <- msgReq
+	response := <-msgChan
+
+	return response
 }

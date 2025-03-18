@@ -58,12 +58,12 @@ func hashBlock(b Block) [32]byte {
 	return sha256.Sum256(buf)
 }
 
-func adjustDifficulty(i int, requestChan chan readRequest) [32]byte {
+func adjustDifficulty(i int) [32]byte {
 
 	printToLog("Adjusting Difficulty...")
 
-	prev10 := readBlock(i-10, requestChan)
-	currentBlock := readBlock(i, requestChan)
+	prev10 := readBlock(i - 10)[0].(Block)
+	currentBlock := readBlock(i)[0].(Block)
 	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10
 	targetTime := float64(2000)
 	ratio := actualTime / targetTime
@@ -117,7 +117,7 @@ func verifyBlock(b Block) bool {
 	defer f.Close()
 
 	// Normal block: fetch prior and validate
-	prior := readBlockFromFile(f, b.Height-1)
+	prior := readBlockFromFile(f, b.Height-1)[0].(Block)
 	if prior.Height == 0 {
 		return false
 	}
@@ -144,7 +144,7 @@ func verifyBlock(b Block) bool {
 	// Timestamp check 1: > median of last 11 blocks
 	timestamps := []int64{}
 	for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
-		blk := readBlockFromFile(f, i)
+		blk := readBlockFromFile(f, i)[0].(Block)
 		timestamps = append(timestamps, blk.Timestamp)
 	}
 	median := medianTimestamp(timestamps)

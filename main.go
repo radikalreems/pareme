@@ -73,14 +73,11 @@ func main() {
 			dialIPChan <- ip
 		case input == "ping":
 			printToLog("Received 'ping' command")
-			msg := newMessage(0, 0, 0, nil) // Request | Ping | Ref:0 | payload:nil
-			msgChan := make(chan Message)
-			msgReq := MessageRequest{
-				Message:         msg,
-				MsgResponseChan: msgChan,
-			}
-			AllPeers[0].SendChan <- msgReq
-			response := <-msgChan
+			response := requestAMessage(0, nil) // Ping | Payload:nil
+			println(describeMessage(response))
+		case input == "height":
+			printToLog("Received 'height' command")
+			response := requestAMessage(1, nil) // Height | Payload:nil
 			println(describeMessage(response))
 		default:
 			fmt.Println("Unknown command. Try 'stop'")

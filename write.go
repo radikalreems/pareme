@@ -13,7 +13,7 @@ import (
 // readRequest represents a request to read a block by height
 type readRequest struct {
 	Height   int
-	Response chan Block
+	Response chan [2]interface{}
 }
 
 // blockWriter processes incoming blocks and read requests, updating the blockchain files
@@ -52,8 +52,8 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block
 
 			case req := <-requestChan:
 				// Handle block read request
-				block := readBlockFromFile(f, req.Height)
-				req.Response <- block
+				response := readBlockFromFile(f, req.Height)
+				req.Response <- response
 
 			case respChan := <-indexRequestChan:
 				// Handle index read request
@@ -88,11 +88,11 @@ func updateIndex(height, totalBlocks int) {
 }
 
 // readBlockFromFile reads a block from the .dat file by height
-func readBlockFromFile(f *os.File, height int) Block {
+func readBlockFromFile(f *os.File, height int) [2]interface{} {
 	// Seek past magic bytes (4 bytes)
 	if _, err := f.Seek(4, 0); err != nil {
 		printToLog(fmt.Sprintf("Error seeking past magic bytes: %v", err))
-		return Block{}
+		return [2]interface{}{Block{}, nil}
 	}
 
 	buf := make([]byte, 112) // Fixed block size
@@ -103,13 +103,13 @@ func readBlockFromFile(f *os.File, height int) Block {
 				break
 			}
 			printToLog(fmt.Sprintf("Error reading block at height %d: %v", height, err))
-			return Block{}
+			return [2]interface{}{Block{}, nil}
 		}
 
 		// Parse block height from first 4 bytes
 		blockHeight := int(buf[0])<<24 | int(buf[1])<<16 | int(buf[2])<<8 | int(buf[3])
 		if blockHeight == height {
-			return Block{
+			block := Block{
 				Height: blockHeight,
 				Timestamp: int64(buf[4])<<56 | int64(buf[5])<<48 | int64(buf[6])<<40 | int64(buf[7])<<32 |
 					int64(buf[8])<<24 | int64(buf[9])<<16 | int64(buf[10])<<8 | int64(buf[11]),
@@ -118,16 +118,20 @@ func readBlockFromFile(f *os.File, height int) Block {
 				Difficulty: *(*[32]byte)(buf[48:80]),
 				BodyHash:   *(*[32]byte)(buf[80:112]),
 			}
+			// Return parsed block and a copy of the raw bytes
+			rawBytes := make([]byte, 112)
+			copy(rawBytes, buf)
+			return [2]interface{}{block, rawBytes}
 		}
 
 	}
 	printToLog(fmt.Sprintf("No block found for height %d", height))
-	return Block{}
+	return [2]interface{}{Block{}, nil}
 }
 
 // readBlock requests a block from the writer by height
-func readBlock(height int, requestChan chan readRequest) Block {
-	responseChan := make(chan Block)
+func readBlock(height int) [2]interface{} {
+	responseChan := make(chan [2]interface{})
 	requestChan <- readRequest{Height: height, Response: responseChan}
 	return <-responseChan
 }
@@ -199,7 +203,7 @@ func readIndex() (int, int) {
 	return int(result[0]), int(result[1])
 }
 
-func getLatestBlock(requestChan chan readRequest) Block {
+func getLatestBlock() Block {
 	// Get the latest height from the index
 	height, _ := readIndex() // Ignore totalBlocks, we only need height
 	if height == 0 {
@@ -208,5 +212,5 @@ func getLatestBlock(requestChan chan readRequest) Block {
 	}
 
 	// Request the block at the latest height from the writer
-	return readBlock(height, requestChan)
+	return readBlock(height)[0].(Block)
 }

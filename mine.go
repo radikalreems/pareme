@@ -54,8 +54,8 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 						printToLog("Already Mining!")
 					} else {
 						// Start mining the next block based on the inital height
-						currentHeight := getLatestBlock(requestChan).Height
-						nextBlock := buildBlockForMining(currentHeight, requestChan)
+						currentHeight := getLatestBlock().Height
+						nextBlock := buildBlockForMining(currentHeight)
 
 						printToLog(fmt.Sprintf("Starting miner at Block %d", currentHeight))
 						miningStartChan <- nextBlock
@@ -81,7 +81,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 
 			case block := <-newBlockChan:
 				// Handle new block heights from the chain
-				currentHeight := getLatestBlock(requestChan).Height
+				currentHeight := getLatestBlock().Height
 
 				newHeights = append(newHeights, block.Height)
 				maxHeight := max(newHeights)
@@ -91,7 +91,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 					<-miningResultChan // Discard interrupted result
 				}
 				currentHeight = maxHeight
-				nextBlock := buildBlockForMining(currentHeight, requestChan)
+				nextBlock := buildBlockForMining(currentHeight)
 				miningStartChan <- nextBlock
 				newHeights = nil // Reset height tracking
 			}
@@ -155,13 +155,13 @@ func max(heights []int) int {
 }
 
 // buildBlockForMining constructs a new block for mining based on the current height
-func buildBlockForMining(height int, requestChan chan readRequest) Block {
-	currentBlock := readBlock(height, requestChan)
+func buildBlockForMining(height int) Block {
+	currentBlock := readBlock(height)[0].(Block)
 	prevHash := hashBlock(currentBlock)
 	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
 	if (height-1)%10 == 0 && height != 1 {
 		// Adjust difficulty every 10 blocks (except genesis)
-		nextBlock.Difficulty = adjustDifficulty(height, requestChan)
+		nextBlock.Difficulty = adjustDifficulty(height)
 	}
 	return nextBlock
 }

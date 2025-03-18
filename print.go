@@ -89,9 +89,7 @@ func describeMessage(msg Message) string {
 	case 1:
 		cmdStr = "Latest Height"
 	case 2:
-		cmdStr = "Specific Block"
-	case 3:
-		cmdStr = "Range of Blocks"
+		cmdStr = "Block Request"
 	default:
 		cmdStr = "Unknown Command"
 	}

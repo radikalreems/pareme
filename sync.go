@@ -29,7 +29,7 @@ func syncChain(ctx context.Context, wg *sync.WaitGroup) (int, chan Block) {
 
 		// Verify each block in the chain
 		for i := 1; i <= getTotalBlocksFromFile("blocks/pareme0000.dat"); i++ {
-			block := readBlockFromFile(f, i)
+			block := readBlockFromFile(f, i)[0].(Block)
 			if block.Height == 0 || !verifyBlock(block) {
 				printToLog("Invalid block or failed block reading, resetting chain")
 				resetChain()
@@ -119,7 +119,7 @@ func syncIndex() (int, int) {
 	if fi.Size() == 0 {
 		printToLog(fmt.Sprintf("No existing index, found %d blocks in dat. resyncing...", datBlocks))
 		if datBlocks > 0 {
-			lastBlock := readBlockFromFile(fd, datBlocks)
+			lastBlock := readBlockFromFile(fd, datBlocks)[0].(Block)
 			height = lastBlock.Height
 			totalBlocks = datBlocks
 		}
@@ -138,7 +138,7 @@ func syncIndex() (int, int) {
 		// Resync if index doesn't match .dat file
 		if totalBlocks != datBlocks {
 			printToLog("Index mismatch, resyncing...")
-			height = readBlockFromFile(fd, datBlocks).Height
+			height = readBlockFromFile(fd, datBlocks)[0].(Block).Height
 			totalBlocks = datBlocks
 			writeIndex(height, totalBlocks)
 		}
