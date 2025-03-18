@@ -6,10 +6,10 @@ Starting up blockWriter...
 Synced chain at height 61
 
 Initializing Miner...
-Recieved 'stop' command
-Block writer shutting down
-Miner shutting down
+Received 'stop' command
 Network shutting down
+Miner shutting down
+Block writer shutting down
 peerMaker Shutting Down
 Listener closed
 Printer shutting down

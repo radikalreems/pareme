@@ -52,16 +52,16 @@ func main() {
 
 		switch {
 		case input == "stop":
-			printToLog("Recieved 'stop' command")
+			printToLog("Received 'stop' command")
 			cancel()  // Signal all goroutines to stop
 			wg.Wait() // Wait for all goroutines to finish
 			fmt.Println("Stopping Pareme...")
 			return
 		case input == "start mine":
-			printToLog("Recieved 'start mine' command")
+			printToLog("Received 'start mine' command")
 			consoleMineChan <- 1
 		case input == "stop mine":
-			printToLog("Recieved 'stop mine' command")
+			printToLog("Received 'stop mine' command")
 			consoleMineChan <- 0
 		case len(input) >= 10 && input[0:10] == "connect to":
 			if len(input) <= 11 {
@@ -71,6 +71,17 @@ func main() {
 			ip := strings.TrimSpace(input[11:])
 			printToLog(fmt.Sprintf("Connecting to IP: %s", ip))
 			dialIPChan <- ip
+		case input == "ping":
+			printToLog("Received 'ping' command")
+			msg := newMessage(0, 0, 0, nil) // Request | Ping | Ref:0 | payload:nil
+			msgChan := make(chan Message)
+			msgReq := MessageRequest{
+				Message:         msg,
+				MsgResponseChan: msgChan,
+			}
+			AllPeers[0].SendChan <- msgReq
+			response := <-msgChan
+			println(describeMessage(response))
 		default:
 			fmt.Println("Unknown command. Try 'stop'")
 		}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -62,4 +63,40 @@ func printToLog(s string) {
 	case printChan <- s: // Send message to printer
 	case <-time.After(1 * time.Second): // Drop message if channel is full after 1s
 	}
+}
+
+func describeMessage(msg Message) string {
+	var kindStr, cmdStr string
+
+	// Kind: Request or Response
+	switch msg.Kind {
+	case 0:
+		kindStr = "Request"
+	case 1:
+		kindStr = "Response"
+	default:
+		kindStr = "Unknown Kind"
+	}
+
+	// Command: Specific action
+	switch msg.Command {
+	case 0:
+		if msg.Kind == 0 {
+			cmdStr = "Ping"
+		} else {
+			cmdStr = "Pong"
+		}
+	case 1:
+		cmdStr = "Latest Height"
+	case 2:
+		cmdStr = "Specific Block"
+	case 3:
+		cmdStr = "Range of Blocks"
+	default:
+		cmdStr = "Unknown Command"
+	}
+
+	// Combine into a readable string with Reference and PayloadSize
+	return fmt.Sprintf("%s for %s (Reference: %d, Payload Size: %d bytes)",
+		kindStr, cmdStr, msg.Reference, msg.PayloadSize)
 }
