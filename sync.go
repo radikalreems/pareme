@@ -1,224 +1,180 @@
 package main
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
-	"sync"
+	"sort"
 )
 
-// syncChain synchronizes the blockchain from files and starts the block writer
-func syncChain(ctx context.Context, wg *sync.WaitGroup) (int, chan Block) {
-	printToLog("Syncing Pareme from peers...")
+// syncChain synchronizes the blockchain from files
+func syncChain() error {
+	printToLog("\nSyncing blockchain from files...")
 
-	// Sync blockchain files and retrieve current height and total blocks
-	height, totalBlocks := syncFiles() // Sync folder, dat, index file
-	if height == -1 || height == 0 {   // Sync failed
-		return -1, nil
+	// Init blockchain files
+	err := initFiles() // Sync folder, dat, index file
+	if err != nil {
+		return fmt.Errorf("failed syncing files: %v", err)
 	}
 
-	// Verify existing chain if not starting from genesis
-	if height != 1 {
-		f, err := os.Open("blocks/pareme0000.dat")
-		if err != nil {
-			printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
-			return -1, nil
-		}
-		defer f.Close()
-
-		// Verify each block in the chain
-		for i := 1; i <= getTotalBlocksFromFile("blocks/pareme0000.dat"); i++ {
-			block := readBlockFromFile(f, i)[0].(Block)
-			if block.Height == 0 || !verifyBlock(block) {
-				printToLog("Invalid block or failed block reading, resetting chain")
-				resetChain()
-			}
-		}
+	// Get latest height & total blocks
+	dirStat, err := os.Stat("blocks/dir0000.idx")
+	if err != nil {
+		return fmt.Errorf("failed stating files: %v", err)
 	}
+	datStat, err := os.Stat("blocks/pareme0000.dat")
+	if err != nil {
+		return fmt.Errorf("failed stating files: %v", err)
+	}
+	height := int(dirStat.Size() / 4)
+	totalBlocks := int(datStat.Size() / 116)
+	printToLog(fmt.Sprintf("Synced to height %d with %d total blocks", height, totalBlocks))
 
-	// Chain is valid; start the block writer goroutine
-	printToLog("Starting up blockWriter...")
-	//requestChan := make(chan readRequest)
-	newBlockChan := blockWriter(ctx, wg, blockChan, totalBlocks)
-
-	printToLog(fmt.Sprintf("Synced chain at height %d\n", height))
-	return height, newBlockChan
+	return nil
 }
 
-// syncFiles initializes or synchronizes blockchain data files (.dat and .idx)
-func syncFiles() (int, int) {
+//------------------- DIRECT I/O FUNCTIONS
+
+// syncFiles initializes data files (.dat and .idx)
+func initFiles() error {
+	printToLog("Initializing files")
 	// Ensure blocks directory exists
 	if err := os.MkdirAll("blocks", 0755); err != nil {
 		printToLog(fmt.Sprintf("Error creating blocks folder: %v", err))
-		return -1, -1
 	}
 
-	// Check and initialize .dat file if it doesn't exist
-	filePath := "blocks/pareme0000.dat"
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		f, err := os.Create(filePath)
+	// Check and initialize DAT file if it doesn't exist
+	datFilePath := "blocks/pareme0000.dat"
+	datFile, err := os.OpenFile(datFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		return fmt.Errorf("failed creating %s: %v", datFilePath, err)
+	}
+	defer datFile.Close()
+
+	datFileStat, err := os.Stat(datFilePath)
+	if err != nil {
+		return fmt.Errorf("failed stating datFile %v", err)
+	}
+	if datFileStat.Size() == 0 {
+		writeBlock(datFile, genesisBlock())
+		printToLog(fmt.Sprintf("Created %s with genesis", datFilePath))
+	}
+
+	// Create DIR file / Wipe if it exists
+	dirFilePath := "blocks/dir0000.idx"
+	dirFile, err := os.Create(dirFilePath)
+	if err != nil {
+		return fmt.Errorf("failed creating %s: %v", dirFilePath, err)
+	}
+	defer dirFile.Close()
+
+	// Create OFF file / Wipe if it exists
+	offFilePath := "blocks/off0000.idx"
+	offFile, err := os.Create(offFilePath)
+	if err != nil {
+		return fmt.Errorf("failed creating %s: %v", offFilePath, err)
+	}
+	defer offFile.Close()
+
+	// Init DIR & OFF files based on DAT
+	err = initializeIndexFiles(datFile, dirFile, offFile)
+	if err != nil {
+		return fmt.Errorf("failed to init index files: %v", err)
+	}
+
+	return nil
+
+}
+
+// Reads DAT file and writes DIR & OFF
+func initializeIndexFiles(datFile, directoryFile, offsetFile *os.File) error {
+	printToLog("Syncing index files to dat...")
+	// Get the size of the DAT file to calculate the number of blocks
+	datStat, err := datFile.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get DAT file stats: %v", err)
+	}
+	numBlocks := datStat.Size() / 116 // Each block is stored as 4 + 112 = 116 bytes
+	printToLog(fmt.Sprintf("%d blocks in DAT", numBlocks))
+
+	// Map to group offsets by height
+	heightToOffsets := make(map[int][]uint32)
+
+	// Read each block's height and record its offset
+	for offset := uint32(0); offset < uint32(numBlocks); offset++ {
+		// Seek to the block's start
+		_, err := datFile.Seek(int64(offset*116), 0)
 		if err != nil {
-			printToLog(fmt.Sprintf("Error creating %s: %v", filePath, err))
-			return -1, -1
+			return fmt.Errorf("failed to seek in DAT file: %v", err)
 		}
-		defer f.Close()
 
-		magic := []byte{0x50, 0x41, 0x52, 0x45} // PARE magic bytes
-		if _, err := f.Write(magic); err != nil {
-			printToLog(fmt.Sprintf("Error writing magic bytes to %s: %v", filePath, err))
-			return -1, -1
+		// Verify the first 4 MAGIC bytes
+		magicCheck := make([]byte, 4)
+		_, err = datFile.Read(magicCheck)
+		if err != nil {
+			return fmt.Errorf("failed to read magic byte for block offset %d", offset/116)
 		}
-		writeBlock(f, genesisBlock())
-		printToLog(fmt.Sprintf("Created %s with magic bytes and genesis", filePath))
-	}
-
-	// Sync the index file with the .dat file
-	height, totalBlocks := syncIndex()
-	if height == -1 || totalBlocks == -1 {
-		return -1, -1
-	}
-
-	return height, totalBlocks
-
-}
-
-// syncIndex synchronizes the index file with the .dat file
-func syncIndex() (int, int) {
-	idxPath := "blocks/pareme.idx"
-	datPath := "blocks/pareme0000.dat"
-	height := 0
-	totalBlocks := 0
-
-	// Open .dat file for reading
-	fd, err := os.Open("blocks/pareme0000.dat")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
-		return -1, -1
-	}
-	defer fd.Close()
-
-	// Open or create index file
-	f, err := os.OpenFile(idxPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open index file %s: %v", idxPath, err))
-		return -1, -1
-	}
-	defer f.Close()
-
-	// Calculate total blocks in .dat file (size - magic) / block size
-	datInfo, err := os.Stat(datPath)
-	if err != nil {
-		printToLog(fmt.Sprintf("Error stating dat file %s: %v", datPath, err))
-		return -1, -1
-	}
-	datBlocks := int((datInfo.Size() - 4) / 112) // 112 bytes per block
-
-	// Check and sync index file
-	fi, _ := f.Stat()
-	if fi.Size() == 0 {
-		printToLog(fmt.Sprintf("No existing index, found %d blocks in dat. resyncing...", datBlocks))
-		if datBlocks > 0 {
-			lastBlock := readBlockFromFile(fd, datBlocks)[0].(Block)
-			height = lastBlock.Height
-			totalBlocks = datBlocks
+		if string(magicCheck) != "PARE" {
+			return fmt.Errorf("failed to verify magic byte for block offset %d", offset/116)
 		}
-		writeIndex(height, totalBlocks)
+
+		// Read the next 4 bytes (Height)
+		heightBytes := make([]byte, 4)
+		_, err = datFile.Read(heightBytes)
+		if err != nil {
+			return fmt.Errorf("failed to read height from DAT file: %v", err)
+		}
+		height := int(binary.BigEndian.Uint32(heightBytes))
+
+		// Group the offset by height
+		heightToOffsets[height] = append(heightToOffsets[height], offset)
+	}
+
+	var heights []int
+	for height := range heightToOffsets {
+		heights = append(heights, height)
+	}
+	sort.Ints(heights)
+
+	// Build OFFSETS and DIRECTORY
+	var offsets []uint32
+	directory := make([]uint32, 0)
+
+	for _, height := range heights {
+		// Add all offsets for this height
+		offsets = append(offsets, heightToOffsets[height]...)
+		// Record the end position of this height group
+		directory = append(directory, uint32(len(offsets)))
+	}
+
+	// Print DIR & OFF but limit to last 8
+	if len(directory) < 9 {
+		printToLog(fmt.Sprintf("Directory values: %v", directory))
 	} else {
-		// Read existing index data
-		buf := make([]byte, 8)
-		if _, err := f.ReadAt(buf, 0); err != nil {
-			printToLog(fmt.Sprintf("Failed to read index file %s: %v", idxPath, err))
-			return -1, -1
-		}
-		height = int(binary.BigEndian.Uint32(buf[0:4]))
-		totalBlocks = int(binary.BigEndian.Uint32(buf[4:8]))
-		printToLog(fmt.Sprintf("Found existing index, height = %d, totalBlocks = %d", height, totalBlocks))
-
-		// Resync if index doesn't match .dat file
-		if totalBlocks != datBlocks {
-			printToLog("Index mismatch, resyncing...")
-			height = readBlockFromFile(fd, datBlocks)[0].(Block).Height
-			totalBlocks = datBlocks
-			writeIndex(height, totalBlocks)
+		printToLog(fmt.Sprintf("Directory values: %v", directory[len(directory)-8:]))
+	}
+	if len(offsets) < 9 {
+		printToLog(fmt.Sprintf("Offset values: %v", offsets))
+	} else {
+		printToLog(fmt.Sprintf("Offset values: %v", offsets[len(offsets)-8:]))
+	}
+	// Write OFFFSETS file
+	offsetFile.Seek(0, 0)
+	for _, offset := range offsets {
+		err := binary.Write(offsetFile, binary.BigEndian, offset)
+		if err != nil {
+			return fmt.Errorf("failed to write to OFFSETS file: %v", err)
 		}
 	}
-	printToLog(fmt.Sprintf("Index synced: height = %d, blocks = %d", height, totalBlocks))
-	return height, totalBlocks
-}
 
-// writeIndex writes height and total block count to the index file
-func writeIndex(height, totalBlocks int) {
-	f, err := os.Create("blocks/pareme.idx")
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to create index file: %v", err))
-		return
-	}
-	defer f.Close()
-
-	// Write index: height (4), totalBlocks(4), filename(10), checksum(2)
-	buf := make([]byte, 20)
-	binary.BigEndian.PutUint32(buf[0:4], uint32(height))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(totalBlocks))
-	copy(buf[8:18], []byte("pareme0000"))
-	binary.BigEndian.PutUint16(buf[18:20], uint16(totalBlocks))
-	if _, err := f.Write(buf); err != nil {
-		printToLog(fmt.Sprintf("Failed to write index: %v", err))
-	}
-}
-
-// resetChain resets the blockchain to the genesis block
-func resetChain() {
-	// Reset .dat file to magic bytes and genesis block
-	f, err := os.Create("blocks/pareme0000.dat")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error resetting dat file: %v", err))
-		return
-	}
-	defer f.Close()
-	magic := []byte{0x50, 0x41, 0x52, 0x45}
-	if _, err := f.Write(magic); err != nil {
-		printToLog(fmt.Sprintf("Error writing magic bytes during reset: %v", err))
-		return
+	// Write DIRECTORY file
+	directoryFile.Seek(0, 0)
+	for _, endPos := range directory {
+		err := binary.Write(directoryFile, binary.BigEndian, endPos)
+		if err != nil {
+			return fmt.Errorf("failed to write to directory file: %v", err)
+		}
 	}
 
-	startBlock := genesisBlock()
-	writeBlock(f, startBlock)
-
-	// Reset index file to reflect genesis state
-	idx, err := os.Create("blocks/pareme.idx")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error resetting index file: %v", err))
-		return
-	}
-	defer idx.Close()
-	buf := make([]byte, 20)
-	binary.BigEndian.PutUint32(buf[0:4], 1)
-	binary.BigEndian.PutUint32(buf[4:8], 1)
-	copy(buf[8:18], []byte("pareme0000"))
-	binary.BigEndian.PutUint16(buf[18:20], 1)
-	if _, err := idx.Write(buf); err != nil {
-		printToLog(fmt.Sprintf("Error writing reset index: %v", err))
-		return
-	}
-
-	printToLog("Chain reset to genesis block")
-}
-
-// getTotalBlocksFromFile calculates the number of blocks in the .dat file
-func getTotalBlocksFromFile(filepath string) int {
-	f, err := os.Open(filepath)
-	if err != nil {
-		printToLog(fmt.Sprintf("Error opening dat file %s: %v", filepath, err))
-		return -1
-	}
-	defer f.Close()
-
-	fi, err := f.Stat()
-	if err != nil {
-		printToLog(fmt.Sprintf("Error stating dat file %s: %v", filepath, err))
-		return -1
-	}
-
-	return int((fi.Size() - 4) / 112) // Subtract magic bytes, divide by block size
+	return nil
 }

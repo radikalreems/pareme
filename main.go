@@ -28,10 +28,20 @@ func main() {
 	// Start the networking goroutine
 	dialIPChan := networkManager(ctx, &wg)
 
-	// Sync chain data and start block verification/writing goroutine
-	height, newBlockChan := syncChain(ctx, &wg)
-	if height == -1 {
-		fmt.Println("Sync failed, exiting...")
+	// Sync chain data
+	err := syncChain()
+	if err != nil {
+		printToLog(fmt.Sprintf("Sync failed: %v", err))
+		cancel()
+		wg.Wait()
+		return
+	}
+
+	// Chain is valid; start the block writer goroutine
+	newBlockChan, err := blockWriter(ctx, &wg)
+	if err != nil {
+		printToLog(fmt.Sprintf("Blockwriter failed: %v", err))
+		cancel()
 		wg.Wait()
 		return
 	}

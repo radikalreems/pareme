@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-type Block struct {
-	Height     int
-	Timestamp  int64
-	PrevHash   [32]byte
-	Nonce      int
-	Difficulty [32]byte
-	BodyHash   [32]byte
+type Block struct { // FIELDS: 112 BYTES | IN FILE: 4 MAGIC + 112 = 116 BYTES
+	Height     int      // 4 bytes
+	Timestamp  int64    // 8 bytes
+	PrevHash   [32]byte // 32 bytes
+	Nonce      int      // 4 bytes
+	Difficulty [32]byte // 32 bytes
+	BodyHash   [32]byte // 32 bytes
 }
 
 func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]byte) Block {
@@ -62,8 +62,8 @@ func adjustDifficulty(i int) [32]byte {
 
 	printToLog("Adjusting Difficulty...")
 
-	prev10 := readBlock(i - 10)[0].(Block)
-	currentBlock := readBlock(i)[0].(Block)
+	prev10 := requestBlocks([]int{i - 10})[0][0]
+	currentBlock := requestBlocks([]int{i})[0][0]
 	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10
 	targetTime := float64(2000)
 	ratio := actualTime / targetTime
@@ -96,7 +96,7 @@ func adjustDifficulty(i int) [32]byte {
 	return difficulty
 }
 
-func verifyBlock(b Block) bool {
+func verifyBlock(datFile, dirFile, offFile *os.File, b Block) (bool, error) {
 	// Genesis block check
 	if b.Height == 1 {
 		genesis := genesisBlock()
@@ -106,63 +106,77 @@ func verifyBlock(b Block) bool {
 		if !verified {
 			printToLog(fmt.Sprintf("Block %d failed verification: genesis block check", b.Height))
 		}
-		return verified
+		return verified, nil
 	}
 
-	f, err := os.Open("blocks/pareme0000.dat")
-	if err != nil {
-		printToLog(fmt.Sprintf("Error opening dat file in read: %v", err))
-		return false
-	}
-	defer f.Close()
-
-	// Normal block: fetch prior and validate
-	prior := readBlockFromFile(f, b.Height-1)[0].(Block)
-	if prior.Height == 0 {
-		return false
-	}
-	priorHash := hashBlock(prior)
+	// Difficulty check
 	blockHash := hashBlock(b)
-
 	diffVerified := bytes.Compare(blockHash[:], b.Difficulty[:]) < 0
-	prevHashVerified := b.PrevHash == priorHash
-	heightVerified := b.Height == prior.Height+1
-
 	if !diffVerified {
-		printToLog(fmt.Sprintf("Block %d failed verification: Difficulty check", b.Height))
-		return false
+		printToLog(fmt.Sprintf("failed verification: difficulty check at block %d", b.Height))
+		return false, nil
 	}
-	if !prevHashVerified {
-		printToLog(fmt.Sprintf("Block %d failed verification: Previous Hash check", b.Height))
-		return false
+
+	// Fetch all prior blocks needed (11 prior blocks) by matching hashes
+	var heights []int
+	for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
+		heights = append(heights, i)
 	}
+	printToLog(fmt.Sprintf("Reading %d blocks from file", len(heights)))
+	allPriors, err := readBlocksFromFile(datFile, dirFile, offFile, heights)
+	printToLog(fmt.Sprintf("Recieved blocks from file. first block: %d", allPriors[0][0].Height))
+	if err != nil {
+		return false, fmt.Errorf("failed to read blocks from file: %v", err)
+	}
+	var selectPriors []Block
+	hashCheck := b.PrevHash
+	for i := 0; i < len(allPriors); i++ {
+		found := false
+		for _, prior := range allPriors[i] {
+			if hashCheck == hashBlock(prior) {
+				selectPriors = append(selectPriors, prior)
+				hashCheck = prior.PrevHash
+				break
+			}
+		}
+		if !found {
+			printToLog(fmt.Sprintf("failed verification: previous hash check at block %d", b.Height))
+			return false, nil
+		}
+	}
+
+	// Height check
+	if len(selectPriors) == 0 {
+		printToLog(fmt.Sprintf("failed verification: no valid prior blocks found for block %d", b.Height))
+		return false, nil
+	}
+	heightVerified := b.Height == selectPriors[0].Height+1
+	printToLog(fmt.Sprintf("Height check: priorheight: %v, height:%v", selectPriors[0].Height, b.Height))
 	if !heightVerified {
-		printToLog(fmt.Sprintf("Block %d failed verification: Height check", b.Height))
-		return false
+		printToLog(fmt.Sprintf("failed verification: height check at block %d", b.Height))
+		return false, nil
 	}
 
 	// Timestamp check 1: > median of last 11 blocks
 	timestamps := []int64{}
-	for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
-		blk := readBlockFromFile(f, i)[0].(Block)
-		timestamps = append(timestamps, blk.Timestamp)
+	for _, prior := range selectPriors {
+		timestamps = append(timestamps, prior.Timestamp)
 	}
+
 	median := medianTimestamp(timestamps)
 	if b.Timestamp <= median {
-		printToLog(fmt.Sprintf("Block %d failed verification: Timestamp check 1", b.Height))
-		return false
+		printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d", b.Height))
+		return false, nil
 	}
 
 	// Timestamp check 2: < now + 2 minutes
 	maxTime := time.Now().UnixMilli() + 120000
-
-	time2Verified := b.Timestamp <= maxTime
-
-	if !time2Verified {
-		printToLog(fmt.Sprintf("Block %d failed verification: Timestamp check 2", b.Height))
+	if b.Timestamp > maxTime {
+		printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d", b.Height))
+		return false, nil
 	}
 
-	return time2Verified
+	return true, nil
 }
 
 func medianTimestamp(ts []int64) int64 {

@@ -79,6 +79,7 @@ func newPeer(address string, port string, conn net.Conn, isOutbound bool) Peer {
 
 // networkManager manages network connections and peer communications
 func networkManager(ctx context.Context, wg *sync.WaitGroup) chan string {
+	printToLog("\nStarting up network manager...")
 	dialIPChan := make(chan string) // Channel for receiving IPs to connect to
 
 	pendingPeerChan := peerMaker(ctx, wg) // Channel for handling new peer connections
@@ -117,6 +118,7 @@ func peerMaker(ctx context.Context, wg *sync.WaitGroup) chan Peer {
 	acceptChan := make(chan Peer)      // Channel for accepted connections
 	pendingPeerChan := make(chan Peer) // Channel for pending peer connections
 
+	printToLog("Network listening on :8080")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -127,8 +129,6 @@ func peerMaker(ctx context.Context, wg *sync.WaitGroup) chan Peer {
 			return
 		}
 		defer listener.Close()
-
-		printToLog("Network listening on :8080")
 
 		wg.Add(1)
 		go func() {
@@ -413,7 +413,7 @@ func respondToMessage(request Message) Message {
 
 	case 1: // Height request
 		// No payload, return current chain height as 4-byte uint32
-		height, _ := readIndex() // Ignore totalBlocks
+		height, _ := requestChainStats() // Ignore totalBlocks
 		buf := make([]byte, 4)
 		binary.BigEndian.PutUint32(buf, uint32(height))
 		return newMessage(1, 1, request.Reference, buf)
@@ -435,15 +435,19 @@ func respondToMessage(request Message) Message {
 		}
 
 		// Collect blocks in range (inclusive)
+		var heights []int
+		for i := startHeight; i <= endHeight; i++ {
+			heights = append(heights, i)
+		}
+		response := requestBlocks(heights)
+		var blocks []Block
+		for _, heightGroup := range response {
+			blocks = append(blocks, heightGroup...)
+		}
 		var payload []byte
-		for h := startHeight; h <= endHeight; h++ {
-			result := readBlock(h)
-			rawBytes := result[1].([]byte) // Element 1 is the []byte
-			if rawBytes == nil {
-				printToLog(fmt.Sprintf("Block %d not found for ref %d", h, request.Reference))
-				return Message{}
-			}
-			payload = append(payload, rawBytes...)
+		for _, block := range blocks {
+			blockByte := blockToByte(block)
+			payload = append(payload, blockByte[:]...)
 		}
 
 		// Return response with all block data

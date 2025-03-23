@@ -13,6 +13,7 @@ var printChan chan string
 
 // initPrinter starts a goroutine to handle logging to pareme.log
 func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
+	printToLog("\nStarting up printer...")
 	// Truncate existing log file if it exists
 	if _, err := os.Stat("pareme.log"); err == nil {
 		if err := os.Truncate("pareme.log", 0); err != nil {

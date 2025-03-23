@@ -9,17 +9,17 @@ import (
 )
 
 func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Block) chan int {
-	printToLog("Initializing Miner...")
+	printToLog("\nInitializing Miner...")
 
 	// Channels for mining coordination
-	miningStartChan := make(chan Block)           // Sends blocks to start mining
-	miningInterruptChan := make(chan struct{}, 1) // Signals mining interruption
-	miningStopChan := make(chan int)              // Signals mining to stop
-	miningResultChan := make(chan Block)          // Revieves mined blocks
-	consoleMineChan := make(chan int)             // Connect with console
+	blockToMineChan := make(chan Block)           // Sends blocks to start mining
+	interruptMiningChan := make(chan struct{}, 1) // Signals mining interruption
+	stopMiningChan := make(chan int)              // Signals mining to stop
+	minedBlockChan := make(chan Block)            // Revieves mined blocks
+	consoleChan := make(chan int)                 // Connect with console
 
 	// Start the mining goroutine
-	go mining(miningStartChan, miningInterruptChan, miningResultChan, miningStopChan)
+	go mining(blockToMineChan, minedBlockChan, interruptMiningChan, stopMiningChan)
 
 	var newHeights []int // Stores incoming block heights for chain updates
 
@@ -35,11 +35,11 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 				// Shutdown triggered by context cancellation
 				if !isMining {
 					printToLog("Miner shutting down")
-					miningStopChan <- 1
+					stopMiningChan <- 1
 					return
 				}
-				miningInterruptChan <- struct{}{}
-				block := <-miningResultChan
+				interruptMiningChan <- struct{}{}
+				block := <-minedBlockChan
 				if block.Nonce == -1 {
 					printToLog("Mining interrupted")
 				} else { // rare but possible
@@ -48,17 +48,17 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 				printToLog("Miner shutting down")
 				return
 
-			case consoleReq := <-consoleMineChan:
+			case consoleReq := <-consoleChan:
 				if consoleReq == 1 {
 					if isMining {
 						printToLog("Already Mining!")
 					} else {
 						// Start mining the next block based on the inital height
-						currentHeight := getLatestBlock().Height
+						currentHeight, _ := requestChainStats()
 						nextBlock := buildBlockForMining(currentHeight)
 
-						printToLog(fmt.Sprintf("Starting miner at Block %d", currentHeight))
-						miningStartChan <- nextBlock
+						printToLog(fmt.Sprintf("\nStarting miner at Block %d", nextBlock.Height))
+						blockToMineChan <- nextBlock
 
 						isMining = true
 					}
@@ -66,49 +66,51 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan Blo
 					if !isMining {
 						printToLog("Already Not Mining!")
 					} else {
-						miningInterruptChan <- struct{}{}
-						<-miningResultChan
+						interruptMiningChan <- struct{}{}
+						<-minedBlockChan
 
 						isMining = false
 					}
 				}
-			case block := <-miningResultChan:
+			case block := <-minedBlockChan:
 				// Successfully mined a block; send it to the writer and broadcast
 				hash := hashBlock(block)
 				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x", block.Height, hash[:8]))
-				blockChan <- block
+				blockChan <- block // Send to writer
 				broadcastBlock(block.Height)
 
 			case block := <-newBlockChan:
 				// Handle new block heights from the chain
-				currentHeight := getLatestBlock().Height
+				latestHeight, _ := requestChainStats() // Ignore totalBlocks, we only need height
+				printToLog(fmt.Sprintf("Latest blocks are at: %d", latestHeight))
 
 				newHeights = append(newHeights, block.Height)
 				maxHeight := max(newHeights)
-				if maxHeight >= currentHeight+2 {
+				if maxHeight >= latestHeight+2 {
 					// Chain is 2+ blocks ahead; interrupt and discard current mining
-					miningInterruptChan <- struct{}{}
-					<-miningResultChan // Discard interrupted result
+					interruptMiningChan <- struct{}{}
+					<-minedBlockChan // Discard interrupted result
 				}
-				currentHeight = maxHeight
-				nextBlock := buildBlockForMining(currentHeight)
-				miningStartChan <- nextBlock
+				latestHeight = maxHeight
+				nextBlock := buildBlockForMining(latestHeight)
+				printToLog(fmt.Sprintf("\nStarting mining on block %d", nextBlock.Height))
+				blockToMineChan <- nextBlock
 				newHeights = nil // Reset height tracking
 			}
 		}
 	}()
-	return consoleMineChan
+	return consoleChan
 }
 
 // mining runs a loop to process blocks for mining
-func mining(startChan <-chan Block, interruptChan <-chan struct{}, resultChan chan<- Block, miningStopChan <-chan int) {
+func mining(blockToMineChan <-chan Block, minedBlockChan chan<- Block, interruptMiningChan <-chan struct{}, stopMiningChan <-chan int) {
 	for {
 		select {
-		case block := <-startChan: // Wait for a block to mine
-			nonce := findNonce(block, interruptChan)
+		case block := <-blockToMineChan: // Wait for a block to mine
+			nonce := findNonce(block, interruptMiningChan)
 			block.Nonce = nonce
-			resultChan <- block // Send mined block back
-		case <-miningStopChan:
+			minedBlockChan <- block // Send mined block back
+		case <-stopMiningChan:
 			return
 		}
 	}
@@ -156,7 +158,12 @@ func max(heights []int) int {
 
 // buildBlockForMining constructs a new block for mining based on the current height
 func buildBlockForMining(height int) Block {
-	currentBlock := readBlock(height)[0].(Block)
+	var currentBlock Block
+	if height == 1 {
+		currentBlock = genesisBlock()
+	} else {
+		currentBlock = requestBlocks([]int{height})[0][0]
+	}
 	prevHash := hashBlock(currentBlock)
 	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
 	if (height-1)%10 == 0 && height != 1 {

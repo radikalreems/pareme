@@ -1,28 +1,42 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
 	"sync"
-	//"path/filepath"
 )
 
 // readRequest represents a request to read a block by height
 type readRequest struct {
-	Height   int
-	Response chan [2]interface{}
+	Heights  []int
+	Response chan [][]Block
 }
 
 // blockWriter processes incoming blocks and read requests, updating the blockchain files
-func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block, totalBlocks int) chan Block {
+func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
+	printToLog("\nStarting up blockWriter...")
 	// Open .dat file for reading and appending
-	f, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_RDWR, 0644)
+	datFile, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open dat file: %v", err))
-		return nil
+		return nil, fmt.Errorf("failed to open DAT file %v", err)
+	}
+
+	// Check and initialize DIR file if it doesn't exist
+	dirFilePath := "blocks/dir0000.idx"
+	dirFile, err := os.OpenFile(dirFilePath, os.O_RDWR, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open DIR file %v", err)
+	}
+
+	// Check and initialize OFF file if it doesn't exist
+	offFilePath := "blocks/off0000.idx"
+	offFile, err := os.OpenFile(offFilePath, os.O_RDWR, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open OFF file %v", err)
 	}
 
 	newBlockChan := make(chan Block, 10) // Send new blocks to miner
@@ -30,187 +44,496 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup, blockChan <-chan Block
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer f.Close()
-
-		currentBlocks := totalBlocks // Track total blocks in the chain
+		defer datFile.Close()
+		defer dirFile.Close()
+		defer offFile.Close()
 
 		for {
 			select {
-			case block := <-blockChan:
-				// Verify and write new block
-				if !verifyBlock(block) {
-					printToLog(fmt.Sprintf("Invalid block at height %d", block.Height))
-					continue
-				}
-				if writeBlock(f, block) == -1 {
-					printToLog(fmt.Sprintf("failed to write block %d", block.Height))
-					continue
-				}
-				currentBlocks++
-				updateIndex(block.Height, currentBlocks)
-				newBlockChan <- block // Notify miners of new block
-
-			case req := <-requestChan:
-				// Handle block read request
-				response := readBlockFromFile(f, req.Height)
-				req.Response <- response
-
-			case respChan := <-indexRequestChan:
-				// Handle index read request
-				height, totalBlocks := readIndexFromFile()
-				respChan <- [2]uint32{uint32(height), uint32(totalBlocks)}
-
 			case <-ctx.Done():
 				printToLog("Block writer shutting down")
 				return
+
+			case respChan := <-indexRequestChan:
+				printToLog("Recieved request for chain stats")
+				// Handle index read request
+				height, totalBlocks, err := getChainStats(datFile, dirFile)
+				if err != nil {
+					printToLog(fmt.Sprintf("Error retreiving chain stats: %v", err))
+				}
+				respChan <- [2]uint32{uint32(height), uint32(totalBlocks)}
+
+			case req := <-requestChan:
+				printToLog(fmt.Sprintf("writer: Recieved request for blocks: %v", req.Heights))
+				// Handle block read request
+				response, err := readBlocksFromFile(datFile, dirFile, offFile, req.Heights)
+				if err != nil {
+					printToLog(fmt.Sprintf("Error reading blocks: %v", err))
+				}
+				req.Response <- response
+
+			case block := <-blockChan:
+				// Verify and write new block
+				printToLog(fmt.Sprintf("writer: Recieved new block %d, verifying...", block.Height))
+				verified, err := verifyBlock(datFile, dirFile, offFile, block)
+				if err != nil {
+					printToLog(fmt.Sprintf("Error verifying block at height %d: %v", block.Height, err))
+				}
+				if !verified {
+					printToLog(fmt.Sprintf("Invalid block at height %d", block.Height))
+					continue
+				}
+				if writeBlock(datFile, block) == -1 {
+					printToLog(fmt.Sprintf("failed to write block %d", block.Height))
+					continue
+				}
+				err = updateIndexFiles(datFile, dirFile, offFile, block)
+				if err != nil {
+					printToLog(fmt.Sprintf("failed to update index: %v", err))
+				} else {
+					printToLog("Successfully updated index\n")
+					newBlockChan <- block // Notify miners of new block
+				}
+
 			}
 		}
 	}()
-	return newBlockChan
+
+	return newBlockChan, nil
 }
 
-// updateIndex updates the index file with the latest height and total block count
-func updateIndex(height, totalBlocks int) {
-	f, err := os.OpenFile("blocks/pareme.idx", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open index file: %v", err))
-		return
-	}
-	defer f.Close()
-
-	// Write height and totalBlocks (8 bytes) at the start of the file
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint32(buf[0:4], uint32(height))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(totalBlocks))
-	if _, err := f.WriteAt(buf, 0); err != nil {
-		printToLog(fmt.Sprintf("Failed to update index: %v", err))
-	}
-}
-
-// readBlockFromFile reads a block from the .dat file by height
-func readBlockFromFile(f *os.File, height int) [2]interface{} {
-	// Seek past magic bytes (4 bytes)
-	if _, err := f.Seek(4, 0); err != nil {
-		printToLog(fmt.Sprintf("Error seeking past magic bytes: %v", err))
-		return [2]interface{}{Block{}, nil}
-	}
-
-	buf := make([]byte, 112) // Fixed block size
-	for {
-		n, err := f.Read(buf)
-		if err != nil || n != 112 {
-			if err == io.EOF {
-				break
-			}
-			printToLog(fmt.Sprintf("Error reading block at height %d: %v", height, err))
-			return [2]interface{}{Block{}, nil}
-		}
-
-		// Parse block height from first 4 bytes
-		blockHeight := int(buf[0])<<24 | int(buf[1])<<16 | int(buf[2])<<8 | int(buf[3])
-		if blockHeight == height {
-			block := Block{
-				Height: blockHeight,
-				Timestamp: int64(buf[4])<<56 | int64(buf[5])<<48 | int64(buf[6])<<40 | int64(buf[7])<<32 |
-					int64(buf[8])<<24 | int64(buf[9])<<16 | int64(buf[10])<<8 | int64(buf[11]),
-				PrevHash:   *(*[32]byte)(buf[12:44]),
-				Nonce:      int(buf[44])<<24 | int(buf[45])<<16 | int(buf[46])<<8 | int(buf[47]),
-				Difficulty: *(*[32]byte)(buf[48:80]),
-				BodyHash:   *(*[32]byte)(buf[80:112]),
-			}
-			// Return parsed block and a copy of the raw bytes
-			rawBytes := make([]byte, 112)
-			copy(rawBytes, buf)
-			return [2]interface{}{block, rawBytes}
-		}
-
-	}
-	printToLog(fmt.Sprintf("No block found for height %d", height))
-	return [2]interface{}{Block{}, nil}
-}
-
-// readBlock requests a block from the writer by height
-func readBlock(height int) [2]interface{} {
-	responseChan := make(chan [2]interface{})
-	requestChan <- readRequest{Height: height, Response: responseChan}
-	return <-responseChan
-}
+//---------------- DIRECT I/O FUNCTIONS
 
 // writeBlock appends a block to the .dat file
-func writeBlock(f *os.File, b Block) int {
-	// Serialize block to 112-byte array
-	data := make([]byte, 0, 112)
+func writeBlock(datFile *os.File, b Block) int {
+	// Serialize block to 116-byte array
+	data := make([]byte, 0, 116)
 
+	magic := []byte("PARE")
+
+	data = append(data, magic[:]...)
 	data = append(data,
 		byte(b.Height>>24), byte(b.Height>>16), byte(b.Height>>8), byte(b.Height),
 		byte(b.Timestamp>>56), byte(b.Timestamp>>48), byte(b.Timestamp>>40), byte(b.Timestamp>>32),
 		byte(b.Timestamp>>24), byte(b.Timestamp>>16), byte(b.Timestamp>>8), byte(b.Timestamp))
-
-	//data = append(data, byte(b.Height>>24), byte(b.Height>>16), byte(b.Height>>8), byte(b.Height))
-	//data = append(data, byte(b.Timestamp>>56), byte(b.Timestamp>>48), byte(b.Timestamp>>40), byte(b.Timestamp>>32),
-	//	byte(b.Timestamp>>24), byte(b.Timestamp>>16), byte(b.Timestamp>>8), byte(b.Timestamp)) // 8 bytes
-	data = append(data, b.PrevHash[:]...)                                                      // 32 bytes
-	data = append(data, byte(b.Nonce>>24), byte(b.Nonce>>16), byte(b.Nonce>>8), byte(b.Nonce)) // 4 bytes
-	data = append(data, b.Difficulty[:]...)                                                    // 32 bytes
+	data = append(data, b.PrevHash[:]...)
+	data = append(data, byte(b.Nonce>>24), byte(b.Nonce>>16), byte(b.Nonce>>8), byte(b.Nonce))
+	data = append(data, b.Difficulty[:]...)
 	data = append(data, b.BodyHash[:]...)
 
 	// Write serialized data to file
-	if _, err := f.Write(data); err != nil {
+	if _, err := datFile.Write(data); err != nil {
 		printToLog(fmt.Sprintf("Error writing block %d: %v", b.Height, err))
 		return -1
 	}
-	printToLog(fmt.Sprintf("Wrote Block %d to file. Difficulty: %x\n", b.Height, b.Difficulty[:8]))
+	printToLog(fmt.Sprintf("Wrote Block %d to file. Timestamp: %v secs.", b.Height, b.Timestamp/1000))
 	return 1
 }
 
-// readIndexFromFile reads the height and total block count directly from the index file
-func readIndexFromFile() (int, int) {
-	f, err := os.Open("blocks/pareme.idx")
+// Given a new block, updates DIR & OFF
+func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Block) error {
+	printToLog(fmt.Sprintf("\nUpdating index files after block %d was written", newBlock.Height))
+	// Calculate the new block's offset
+	datStat, err := datFile.Stat()
 	if err != nil {
-		printToLog(fmt.Sprintf("Failed to open index file for reading: %v", err))
-		return 0, 0
+		return fmt.Errorf("failed to stat DAT file: %v", err)
 	}
-	defer f.Close()
+	numBlocks := datStat.Size() / 116  // Total number of blocks in DAT
+	newOffset := uint32(numBlocks - 1) // Offset the new block was written at
 
-	// Check file size to ensure at least 8 bytes are present
-	fi, err := f.Stat()
+	// Check if directory has the height we want
+	dirIndex := (newBlock.Height - 1) * 4 // The directory index to read given blocks height
+	var dirSize int64
+	dirStat, err := directoryFile.Stat()
 	if err != nil {
-		printToLog(fmt.Sprintf("Failed to stat index file: %v", err))
-		return 0, 0
+		return fmt.Errorf("failed to stat DIR file: %v", err)
 	}
-	if fi.Size() < 8 {
-		printToLog("Index file too shore, expected at least 8 bytes")
-		return 0, 0
+	dirSize = dirStat.Size()
+	if dirSize < int64(dirIndex+4) {
+		var lastValue uint32 // last value in the directory in case we need it
+		_, err = directoryFile.Seek(-4, io.SeekEnd)
+		if err != nil {
+			return fmt.Errorf("failed to seek DIR file: %v", err)
+		}
+		err = binary.Read(directoryFile, binary.BigEndian, &lastValue)
+		if err != nil {
+			return fmt.Errorf("failed to read DIR file: %v", err)
+		}
+
+		_, err = directoryFile.Seek(0, io.SeekEnd)
+		if err != nil {
+			return fmt.Errorf("failed to seek DIR file: %v", err)
+		}
+
+		dirStat, err := directoryFile.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to stat DIR file: %v", err)
+		}
+		dirSize = dirStat.Size()
+		// Loop until the directory is filled to our height
+		for dirSize < int64(dirIndex+4) {
+			err = binary.Write(directoryFile, binary.BigEndian, lastValue)
+			if err != nil {
+				return fmt.Errorf("failed to write to DIR file: %v", err)
+			}
+			dirStat, err := directoryFile.Stat()
+			if err != nil {
+				return fmt.Errorf("failed to stat DIR file: %v", err)
+			}
+			dirSize = dirStat.Size()
+		}
 	}
 
-	// Read first 8 bytes: height(8) and totalBlocks(4)
-	buf := make([]byte, 8)
-	if _, err := f.Read(buf); err != nil {
-		printToLog(fmt.Sprintf("Failed to read index file: %v", err))
-		return 0, 0
+	// Read the value at the desired offset and then add 1 to it and the rest
+	_, err = directoryFile.Seek(int64(dirIndex), io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("failed to seek DIR file: %v", err)
+	}
+	var dirValue uint32
+	err = binary.Read(directoryFile, binary.BigEndian, &dirValue)
+	if err != nil {
+		return fmt.Errorf("failed to read DIR file: %v", err)
+	}
+	dirValueBytes := int64(dirValue * 4)
+
+	// Come back and increment it by 1
+	_, err = directoryFile.Seek(int64(dirIndex), io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("failed to seek DIR file: %v", err)
+	}
+	err = binary.Write(directoryFile, binary.BigEndian, dirValue+1)
+	if err != nil {
+		return fmt.Errorf("failed to write to DIR file: %v", err)
+	}
+	for {
+		// Increment all the rest by 1
+		pos, err := directoryFile.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return fmt.Errorf("failed to seek DIR file: %v", err)
+		}
+
+		dirStat, err := directoryFile.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to stat DIR file: %v", err)
+		}
+		if pos >= dirStat.Size() {
+			break
+		}
+
+		var temp uint32
+		err = binary.Read(directoryFile, binary.BigEndian, &temp)
+		if err != nil {
+			return fmt.Errorf("failed to read DIR file: %v", err)
+		}
+		err = binary.Write(directoryFile, binary.BigEndian, temp+1)
+		if err != nil {
+			return fmt.Errorf("failed to write to DIR file: %v", err)
+		}
 	}
 
-	height := binary.BigEndian.Uint32(buf[0:4])
-	totalBlocks := binary.BigEndian.Uint32(buf[4:8])
-	// Skip "pareme0000:count" for now, assume one file
-	return int(height), int(totalBlocks)
+	// Check if we are just appending to the OFFSET file
+	offStat, err := offsetFile.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat OFF file")
+	}
+	offSize := offStat.Size()
+
+	if dirValueBytes > offSize {
+		return fmt.Errorf("offset %d beyond end of file (%d bytes)", dirValueBytes, offSize)
+	}
+
+	if dirValueBytes == offSize {
+		// Can be directly appened to OFFSET file
+		_, err = offsetFile.Seek(0, io.SeekEnd)
+		if err != nil {
+			return fmt.Errorf("failed to seek OFF file: %v", err)
+		}
+		err = binary.Write(offsetFile, binary.BigEndian, newOffset)
+		if err != nil {
+			return fmt.Errorf("failed to write to OFF file: %v", err)
+		}
+	} else {
+		// Save data from OFFSET to be moved over
+		var buf []uint32
+		_, err = offsetFile.Seek(dirValueBytes, io.SeekStart)
+		if err != nil {
+			return fmt.Errorf("failed to seek OFF file: %v", err)
+		}
+		for {
+			var temp uint32
+			err := binary.Read(offsetFile, binary.BigEndian, &temp)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return fmt.Errorf("failed to read OFF file: %v", err)
+			}
+			buf = append(buf, temp)
+		}
+
+		// Write the newOffset at the dirValue offset
+		_, err = offsetFile.Seek(dirValueBytes, io.SeekStart)
+		if err != nil {
+			return fmt.Errorf("failed to seek OFF file: %v", err)
+		}
+		err = binary.Write(offsetFile, binary.BigEndian, newOffset)
+		if err != nil {
+			return fmt.Errorf("failed to write to OFF file: %v", err)
+		}
+
+		// Append back the rest of the data
+		for _, v := range buf {
+			err = binary.Write(offsetFile, binary.BigEndian, v)
+			if err != nil {
+				return fmt.Errorf("failed to write to OFF file: %v", err)
+			}
+		}
+	}
+
+	datSlice, dirSlice, offSlice, err := displayIndexFiles(datFile, directoryFile, offsetFile)
+	if err != nil {
+		return fmt.Errorf("failed to display index files: %v", err)
+	}
+	// Print updated chain stats but limit to last 8
+	if len(datSlice) < 9 {
+		printToLog(fmt.Sprintf("Dat file: %v", datSlice))
+	} else {
+		printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
+	}
+	if len(dirSlice) < 9 {
+		printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
+	} else {
+		printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
+	}
+	if len(offSlice) < 9 {
+		printToLog(fmt.Sprintf("Offset file: %v", offSlice))
+	} else {
+		printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
+	}
+	return nil
 }
 
-func readIndex() (int, int) {
+// Given heights, returns Blocks
+func readBlocksFromFile(datFile, directoryFile, offsetFile *os.File, heights []int) ([][]Block, error) {
+	// Obtain height group locations
+	var heightGroupStarts []uint32
+	var heightGroupSizes []uint32
+	var heightGroupStart uint32
+	var heightGroupEnd uint32
+
+	for _, height := range heights {
+		if height == 1 {
+			heightGroupStarts = append(heightGroupStarts, 0)
+			heightGroupSizes = append(heightGroupSizes, 1)
+		} else {
+			_, err := directoryFile.Seek(int64((height-2)*4), 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed to seek DIR file: %v", err)
+			}
+			err = binary.Read(directoryFile, binary.BigEndian, &heightGroupStart)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read DIR file: %v", err)
+			}
+			err = binary.Read(directoryFile, binary.BigEndian, &heightGroupEnd)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read DIR file: %v", err)
+			}
+			heightGroupSize := (heightGroupEnd - heightGroupStart)
+			heightGroupStarts = append(heightGroupStarts, heightGroupStart)
+			heightGroupSizes = append(heightGroupSizes, heightGroupSize)
+		}
+	}
+	// Obtain block location offsets
+	blockLocs := make([][]uint32, len(heights))
+	for i, hgstart := range heightGroupStarts {
+		_, err := offsetFile.Seek(int64(hgstart*4), 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek OFF file: %v", err)
+		}
+		var blockLoc uint32
+		for range heightGroupSizes[i] {
+			err = binary.Read(offsetFile, binary.BigEndian, &blockLoc)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read OFF file: %v", err)
+			}
+			blockLocs[i] = append(blockLocs[i], blockLoc)
+		}
+	}
+	// Obtain blocks
+	blocks := make([][]Block, len(heights))
+	for i := range blockLocs {
+		blockByte := make([]byte, 116)
+		for _, loc := range blockLocs[i] {
+			_, err := datFile.Seek(int64(loc*116), 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed to seek OFF file: %v", err)
+			}
+			n, err := datFile.Read(blockByte)
+			if n != 116 || err != nil {
+				return nil, fmt.Errorf("failed to read DAT file: %v", err)
+			}
+			if !bytes.Equal(blockByte[:4], []byte("PARE")) {
+				return nil, fmt.Errorf("failed to find magic bytes")
+			}
+			block := byteToBlock([112]byte(blockByte[4:]))
+			blocks[i] = append(blocks[i], block)
+		}
+	}
+	return blocks, nil
+}
+
+func getChainStats(datFile, directoryFile *os.File) (int, int, error) {
+	// Get latest height & total blocks
+	datStat, err := datFile.Stat()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed stating files: %v", err)
+	}
+	dirStat, err := directoryFile.Stat()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed stating files: %v", err)
+	}
+	height := int(dirStat.Size() / 4)
+	totalBlocks := int(datStat.Size() / 116)
+	return height, totalBlocks, nil
+}
+
+//----------------- REQUEST FILE INFO FUNCTIONS
+
+// readBlock requests blocks from the writer by heights
+func requestBlocks(heights []int) [][]Block {
+	responseChan := make(chan [][]Block)
+	requestChan <- readRequest{Heights: heights, Response: responseChan}
+	return <-responseChan
+}
+
+func requestChainStats() (int, int) {
 	responseChan := make(chan [2]uint32)
 	indexRequestChan <- responseChan
 	result := <-responseChan
 	return int(result[0]), int(result[1])
 }
 
-func getLatestBlock() Block {
-	// Get the latest height from the index
-	height, _ := readIndex() // Ignore totalBlocks, we only need height
-	if height == 0 {
-		printToLog("No blocks available, returning empty block")
-		return Block{}
+//--------------- QOL FUNCTIONS
+
+func byteToBlock(data [112]byte) Block {
+	var block Block
+	block.Height = int(binary.BigEndian.Uint32(data[:4]))
+	block.Timestamp = int64(binary.BigEndian.Uint64(data[4:12]))
+	copy(block.PrevHash[:], data[12:44])
+	block.Nonce = int(binary.BigEndian.Uint32(data[44:48]))
+	copy(block.Difficulty[:], data[48:80])
+	copy(block.BodyHash[:], data[80:112])
+	return block
+}
+
+func blockToByte(b Block) [112]byte {
+	var result [112]byte
+	var offset int
+
+	// Height: int (4 bytes)
+	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Height))
+	offset += 4
+
+	// Timestamp: int 64 (8 bytes)
+	binary.BigEndian.PutUint64(result[offset:offset+8], uint64(b.Timestamp))
+	offset += 8
+
+	// PrevHash: [32]byte (32 bytes)
+	copy(result[offset:offset+32], b.PrevHash[:])
+	offset += 32
+
+	// Nonce: int (4 bytes)
+	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Nonce))
+	offset += 4
+
+	// Difficulty: [32]byte (32 bytes)
+	copy(result[offset:offset+32], b.Difficulty[:])
+	offset += 32
+
+	// BodyHash: [32]byte (32 bytes)
+	copy(result[offset:offset+32], b.BodyHash[:])
+
+	return result
+}
+
+func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([]int, []uint32, []uint32, error) {
+	readAllUint32 := func(f *os.File) ([]uint32, error) {
+		// Seek to start just in case
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+
+		var values []uint32
+		for {
+			var v uint32
+			err := binary.Read(f, binary.BigEndian, &v)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, v)
+		}
+		return values, nil
 	}
 
-	// Request the block at the latest height from the writer
-	return readBlock(height)[0].(Block)
+	readAllBlocks := func(f *os.File) ([]Block, error) {
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return nil, err
+		}
+
+		fileStat, err := f.Stat()
+		if err != nil {
+			return nil, err
+		}
+		fileSize := fileStat.Size()
+		if fileSize%116 != 0 {
+			return nil, fmt.Errorf("fileSize not a multiple of 116")
+		}
+
+		numOfBlocks := int(fileSize / 116)
+		var values [][112]byte
+		for i := 0; i < numOfBlocks; i++ {
+			_, err := f.Seek(4, io.SeekCurrent)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			var v [112]byte
+			err = binary.Read(f, binary.BigEndian, &v)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, v)
+		}
+		var blocks []Block
+		for i := 0; i < len(values); i++ {
+			blocks = append(blocks, byteToBlock(values[i]))
+		}
+		return blocks, nil
+	}
+
+	a1, err1 := readAllBlocks(datFile)
+	if err1 != nil {
+		return nil, nil, nil, err1
+	}
+	var heights []int
+	for a := range a1 {
+		heights = append(heights, a1[a].Height)
+	}
+
+	a2, err2 := readAllUint32(directoryFile)
+	if err2 != nil {
+		return nil, nil, nil, err2
+	}
+
+	a3, err3 := readAllUint32(offsetFile)
+	if err3 != nil {
+		return nil, nil, nil, err3
+	}
+
+	return heights, a2, a3, nil
 }
