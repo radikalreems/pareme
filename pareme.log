@@ -1,0 +1,177 @@
+
+Starting up network manager...
+Network listening on :8080
+
+Syncing blockchain from files...
+Initializing files
+Syncing index files to dat...
+74 blocks in DAT
+Directory values: [67 68 69 70 71 72 73 74]
+Offset values: [66 67 68 69 70 71 72 73]
+Synced to height 74 with 74 total blocks
+
+Starting up blockWriter...
+
+Initializing Miner...
+Received 'start mine' command
+Recieved request for chain stats
+writer: Recieved request for blocks: [74]
+
+Starting miner at Block 75
+Finding Nonce for Block 75, Difficulty: 0000046366666666
+Nonce 5908500 found in 2 seconds
+Mined Block 75 with Hash: 00000323680a3d7a
+Broadcasting Block 75 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 74
+1 verified | 0 failed | 0 orphaned
+Wrote Block 75 to file. Timestamp: 1742838077 secs.
+
+Updating index files after block 75 was written
+Dat file: [68 69 70 71 72 73 74 75]
+Directory file: [68 69 70 71 72 73 74 75]
+Offset file: [67 68 69 70 71 72 73 74]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [75]
+
+----- Starting mining on block 76 -----
+Finding Nonce for Block 76, Difficulty: 0000046366666666
+Nonce 2077377 found in 1 seconds
+Mined Block 76 with Hash: 00000288e70f4ba6
+Broadcasting Block 76 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 75
+1 verified | 0 failed | 0 orphaned
+Wrote Block 76 to file. Timestamp: 1742838079 secs.
+
+Updating index files after block 76 was written
+Dat file: [69 70 71 72 73 74 75 76]
+Directory file: [69 70 71 72 73 74 75 76]
+Offset file: [68 69 70 71 72 73 74 75]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [76]
+
+----- Starting mining on block 77 -----
+Finding Nonce for Block 77, Difficulty: 0000046366666666
+Nonce 444305 found in 0 seconds
+Mined Block 77 with Hash: 0000038c501d9d1c
+Broadcasting Block 77 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 76
+1 verified | 0 failed | 0 orphaned
+Wrote Block 77 to file. Timestamp: 1742838080 secs.
+
+Updating index files after block 77 was written
+Dat file: [70 71 72 73 74 75 76 77]
+Directory file: [70 71 72 73 74 75 76 77]
+Offset file: [69 70 71 72 73 74 75 76]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [77]
+
+----- Starting mining on block 78 -----
+Finding Nonce for Block 78, Difficulty: 0000046366666666
+Nonce 6631162 found in 3 seconds
+Mined Block 78 with Hash: 0000014d8677a9d7
+Broadcasting Block 78 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 77
+1 verified | 0 failed | 0 orphaned
+Wrote Block 78 to file. Timestamp: 1742838080 secs.
+
+Updating index files after block 78 was written
+Dat file: [71 72 73 74 75 76 77 78]
+Directory file: [71 72 73 74 75 76 77 78]
+Offset file: [70 71 72 73 74 75 76 77]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [78]
+
+----- Starting mining on block 79 -----
+Finding Nonce for Block 79, Difficulty: 0000046366666666
+Nonce 542936 found in 0 seconds
+Mined Block 79 with Hash: 000003ab90b90a44
+Broadcasting Block 79 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 78
+1 verified | 0 failed | 0 orphaned
+Wrote Block 79 to file. Timestamp: 1742838083 secs.
+
+Updating index files after block 79 was written
+Dat file: [72 73 74 75 76 77 78 79]
+Directory file: [72 73 74 75 76 77 78 79]
+Offset file: [71 72 73 74 75 76 77 78]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [79]
+
+----- Starting mining on block 80 -----
+Finding Nonce for Block 80, Difficulty: 0000046366666666
+Nonce 1930169 found in 0 seconds
+Mined Block 80 with Hash: 000003428ae435ce
+Broadcasting Block 80 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 79
+1 verified | 0 failed | 0 orphaned
+Wrote Block 80 to file. Timestamp: 1742838083 secs.
+
+Updating index files after block 80 was written
+Dat file: [73 74 75 76 77 78 79 80]
+Directory file: [73 74 75 76 77 78 79 80]
+Offset file: [72 73 74 75 76 77 78 79]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [80]
+
+----- Starting mining on block 81 -----
+Finding Nonce for Block 81, Difficulty: 0000046366666666
+Nonce 6819521 found in 3 seconds
+Mined Block 81 with Hash: 00000459354c8fa6
+Broadcasting Block 81 to Pareme....
+
+writer: Recieved 1 new blocks. verifying...
+Reading 11 blocks from file
+Recieved blocks from file. first block: 80
+1 verified | 0 failed | 0 orphaned
+Wrote Block 81 to file. Timestamp: 1742838083 secs.
+
+Updating index files after block 81 was written
+Dat file: [74 75 76 77 78 79 80 81]
+Directory file: [74 75 76 77 78 79 80 81]
+Offset file: [73 74 75 76 77 78 79 80]
+Successfully updated index
+Successfully wrote 1 new blocks!
+writer: Recieved request for blocks: [81]
+Adjusting Difficulty...
+writer: Recieved request for blocks: [71]
+writer: Recieved request for blocks: [81]
+3.360350 - Ratio
+0000046366666666 - Old Difficulty
+00000ebf04669057 - New Difficulty
+
+
+----- Starting mining on block 82 -----
+Finding Nonce for Block 82, Difficulty: 00000ebf04669057
+Received 'stop mine' command
+Nonce search interrupted for Block 82
+Received 'stop' command
+Miner shutting down
+Block writer shutting down
+Network shutting down
+peerMaker Shutting Down
+Listener closed
+Printer shutting down

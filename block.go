@@ -96,88 +96,118 @@ func adjustDifficulty(i int) [32]byte {
 	return difficulty
 }
 
-func verifyBlock(datFile, dirFile, offFile *os.File, b Block) (bool, error) {
-	// Genesis block check
-	if b.Height == 1 {
-		genesis := genesisBlock()
-		genesisHash := hashBlock(genesis)
-		blockHash := hashBlock(b)
-		verified := genesisHash == blockHash
-		if !verified {
-			printToLog(fmt.Sprintf("Block %d failed verification: genesis block check", b.Height))
+func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, []Block, []Block, error) {
+
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Height < blocks[j].Height
+	})
+
+	var verified []Block
+	var failed []Block
+	var orphaned []Block
+
+	for _, b := range blocks {
+		// Genesis block check
+		if b.Height == 1 {
+			genesis := genesisBlock()
+			genesisHash := hashBlock(genesis)
+			blockHash := hashBlock(b)
+			if genesisHash != blockHash {
+				printToLog(fmt.Sprintf("Block %d failed verification: genesis block check", b.Height))
+				failed = append(failed, b)
+				continue
+			}
+			verified = append(verified, b)
+			continue
 		}
-		return verified, nil
-	}
 
-	// Difficulty check
-	blockHash := hashBlock(b)
-	diffVerified := bytes.Compare(blockHash[:], b.Difficulty[:]) < 0
-	if !diffVerified {
-		printToLog(fmt.Sprintf("failed verification: difficulty check at block %d", b.Height))
-		return false, nil
-	}
+		// Difficulty check
+		blockHash := hashBlock(b)
+		diffVerified := bytes.Compare(blockHash[:], b.Difficulty[:]) < 0
+		if !diffVerified {
+			printToLog(fmt.Sprintf("failed verification: difficulty check at block %d", b.Height))
+			failed = append(failed, b)
+			continue
+		}
 
-	// Fetch all prior blocks needed (11 prior blocks) by matching hashes
-	var heights []int
-	for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
-		heights = append(heights, i)
-	}
-	printToLog(fmt.Sprintf("Reading %d blocks from file", len(heights)))
-	allPriors, err := readBlocksFromFile(datFile, dirFile, offFile, heights)
-	printToLog(fmt.Sprintf("Recieved blocks from file. first block: %d", allPriors[0][0].Height))
-	if err != nil {
-		return false, fmt.Errorf("failed to read blocks from file: %v", err)
-	}
-	var selectPriors []Block
-	hashCheck := b.PrevHash
-	for i := 0; i < len(allPriors); i++ {
-		found := false
-		for _, prior := range allPriors[i] {
-			if hashCheck == hashBlock(prior) {
-				selectPriors = append(selectPriors, prior)
-				hashCheck = prior.PrevHash
-				found = true
+		// Fetch all prior blocks needed (11 prior blocks) by matching hashes
+		var heights []int
+		for i := b.Height - 1; i >= maxAB(1, b.Height-11); i-- {
+			heights = append(heights, i)
+		}
+		printToLog(fmt.Sprintf("Reading %d blocks from file", len(heights)))
+		allPriors, err := readBlocksFromFile(datFile, dirFile, offFile, heights)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to read blocks from file: %v", err)
+		}
+		printToLog(fmt.Sprintf("Recieved blocks from file. first block: %d", allPriors[0][0].Height))
+
+		// Skim down allPriors to just the hash chain. If the first fails it's orphaned, if any other fails it's an error
+		var selectPriors []Block
+		hashCheck := b.PrevHash
+		var orph bool
+		for i := 0; i < len(allPriors); i++ {
+			found := false
+			for _, prior := range allPriors[i] {
+				if hashCheck == hashBlock(prior) {
+					selectPriors = append(selectPriors, prior)
+					hashCheck = prior.PrevHash
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			if i == 0 {
+				orph = true
 				break
 			}
+
+			return nil, nil, nil, fmt.Errorf("verification error: can't verify hash chain at block %d", b.Height)
 		}
-		if !found {
-			printToLog(fmt.Sprintf("failed verification: previous hash check at block %d", b.Height))
-			return false, nil
+
+		// Orphan check
+		if orph {
+			printToLog(fmt.Sprintf("failed verification: can't find prevHash - orphan at %d", b.Height))
+			orphaned = append(orphaned, b)
+			continue
 		}
+
+		// Height check
+		heightVerified := b.Height == selectPriors[0].Height+1
+		if !heightVerified {
+			printToLog(fmt.Sprintf("failed verification: height check at block %d", b.Height))
+			failed = append(failed, b)
+			continue
+		}
+
+		// Timestamp check 1: > median of last 11 blocks
+		timestamps := []int64{}
+		for _, prior := range selectPriors {
+			timestamps = append(timestamps, prior.Timestamp)
+		}
+
+		median := medianTimestamp(timestamps)
+		if b.Timestamp <= median {
+			printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d", b.Height))
+			failed = append(failed, b)
+			continue
+		}
+
+		// Timestamp check 2: < now + 2 minutes
+		maxTime := time.Now().UnixMilli() + 120000
+		if b.Timestamp > maxTime {
+			printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d", b.Height))
+			failed = append(failed, b)
+			continue
+		}
+
+		verified = append(verified, b)
+
 	}
 
-	// Height check
-	if len(selectPriors) == 0 {
-		printToLog(fmt.Sprintf("failed verification: no valid prior blocks found for block %d", b.Height))
-		return false, nil
-	}
-	heightVerified := b.Height == selectPriors[0].Height+1
-	printToLog(fmt.Sprintf("Height check: priorheight: %v, height:%v", selectPriors[0].Height, b.Height))
-	if !heightVerified {
-		printToLog(fmt.Sprintf("failed verification: height check at block %d", b.Height))
-		return false, nil
-	}
-
-	// Timestamp check 1: > median of last 11 blocks
-	timestamps := []int64{}
-	for _, prior := range selectPriors {
-		timestamps = append(timestamps, prior.Timestamp)
-	}
-
-	median := medianTimestamp(timestamps)
-	if b.Timestamp <= median {
-		printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d", b.Height))
-		return false, nil
-	}
-
-	// Timestamp check 2: < now + 2 minutes
-	maxTime := time.Now().UnixMilli() + 120000
-	if b.Timestamp > maxTime {
-		printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d", b.Height))
-		return false, nil
-	}
-
-	return true, nil
+	return verified, failed, orphaned, nil
 }
 
 func medianTimestamp(ts []int64) int64 {

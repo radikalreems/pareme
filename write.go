@@ -17,7 +17,7 @@ type readRequest struct {
 }
 
 // blockWriter processes incoming blocks and read requests, updating the blockchain files
-func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
+func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 	printToLog("\nStarting up blockWriter...")
 	// Open .dat file for reading and appending
 	datFile, err := os.OpenFile("blocks/pareme0000.dat", os.O_APPEND|os.O_RDWR, 0644)
@@ -39,7 +39,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
 		return nil, fmt.Errorf("failed to open OFF file %v", err)
 	}
 
-	newBlockChan := make(chan Block, 10) // Send new blocks to miner
+	newBlockChan := make(chan []int, 10) // Send new blocks to miner
 
 	wg.Add(1)
 	go func() {
@@ -47,6 +47,8 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
 		defer datFile.Close()
 		defer dirFile.Close()
 		defer offFile.Close()
+
+		var orphaned []Block
 
 		for {
 			select {
@@ -72,27 +74,28 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
 				}
 				req.Response <- response
 
-			case block := <-blockChan:
-				// Verify and write new block
-				printToLog(fmt.Sprintf("writer: Recieved new block %d, verifying...", block.Height))
-				verified, err := verifyBlock(datFile, dirFile, offFile, block)
+			case blocks := <-blockChan:
+				// Verify and write new blocks
+				printToLog(fmt.Sprintf("\nwriter: Recieved %d new blocks. verifying...", len(blocks)))
+				blocks = append(blocks, orphaned...)
+				verified, failed, orphans, err := verifyBlocks(datFile, dirFile, offFile, blocks)
 				if err != nil {
-					printToLog(fmt.Sprintf("Error verifying block at height %d: %v", block.Height, err))
+					printToLog(fmt.Sprintf("Error verifying blocks: %v", err))
 				}
-				if !verified {
-					printToLog(fmt.Sprintf("Invalid block at height %d", block.Height))
+				printToLog(fmt.Sprintf("%d verified | %d failed | %d orphaned", len(verified), len(failed), len(orphaned)))
+				orphaned = orphans
+				err = writeBlocks(datFile, dirFile, offFile, verified)
+				if err != nil {
+					printToLog(fmt.Sprintf("failed to write blocks: %v", err))
 					continue
 				}
-				if writeBlock(datFile, block) == -1 {
-					printToLog(fmt.Sprintf("failed to write block %d", block.Height))
-					continue
-				}
-				err = updateIndexFiles(datFile, dirFile, offFile, block)
-				if err != nil {
-					printToLog(fmt.Sprintf("failed to update index: %v", err))
-				} else {
-					printToLog("Successfully updated index\n")
-					newBlockChan <- block // Notify miners of new block
+				printToLog(fmt.Sprintf("Successfully wrote %d new blocks!", len(verified)))
+				if miningState.Active {
+					var heights []int
+					for _, v := range verified {
+						heights = append(heights, v.Height)
+					}
+					newBlockChan <- heights // Notify miners of new block
 				}
 
 			}
@@ -105,29 +108,48 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan Block, error) {
 //---------------- DIRECT I/O FUNCTIONS
 
 // writeBlock appends a block to the .dat file
-func writeBlock(datFile *os.File, b Block) int {
-	// Serialize block to 116-byte array
-	data := make([]byte, 0, 116)
+func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 
-	magic := []byte("PARE")
-
-	data = append(data, magic[:]...)
-	data = append(data,
-		byte(b.Height>>24), byte(b.Height>>16), byte(b.Height>>8), byte(b.Height),
-		byte(b.Timestamp>>56), byte(b.Timestamp>>48), byte(b.Timestamp>>40), byte(b.Timestamp>>32),
-		byte(b.Timestamp>>24), byte(b.Timestamp>>16), byte(b.Timestamp>>8), byte(b.Timestamp))
-	data = append(data, b.PrevHash[:]...)
-	data = append(data, byte(b.Nonce>>24), byte(b.Nonce>>16), byte(b.Nonce>>8), byte(b.Nonce))
-	data = append(data, b.Difficulty[:]...)
-	data = append(data, b.BodyHash[:]...)
-
-	// Write serialized data to file
-	if _, err := datFile.Write(data); err != nil {
-		printToLog(fmt.Sprintf("Error writing block %d: %v", b.Height, err))
-		return -1
+	if len(blocks) < 1 {
+		return fmt.Errorf("%v is an unsupported amount of blocks to write", len(blocks))
 	}
-	printToLog(fmt.Sprintf("Wrote Block %d to file. Timestamp: %v secs.", b.Height, b.Timestamp/1000))
-	return 1
+
+	for _, block := range blocks {
+		// Serialize block to 116-byte array
+		data := make([]byte, 0, 116)
+
+		magic := []byte("PARE")
+
+		data = append(data, magic[:]...)
+		data = append(data,
+			byte(block.Height>>24), byte(block.Height>>16), byte(block.Height>>8), byte(block.Height),
+			byte(block.Timestamp>>56), byte(block.Timestamp>>48), byte(block.Timestamp>>40), byte(block.Timestamp>>32),
+			byte(block.Timestamp>>24), byte(block.Timestamp>>16), byte(block.Timestamp>>8), byte(block.Timestamp))
+		data = append(data, block.PrevHash[:]...)
+		data = append(data, byte(block.Nonce>>24), byte(block.Nonce>>16), byte(block.Nonce>>8), byte(block.Nonce))
+		data = append(data, block.Difficulty[:]...)
+		data = append(data, block.BodyHash[:]...)
+
+		// Write serialized data to file
+		if _, err := datFile.Write(data); err != nil {
+			return fmt.Errorf("error writing block %d: %v", block.Height, err)
+		}
+		printToLog(fmt.Sprintf("Wrote Block %d to file. Timestamp: %v secs.", block.Height, block.Timestamp/1000))
+	}
+
+	if len(blocks) == 1 && blocks[0].Height != 1 {
+		err := updateIndexFiles(datFile, dirFile, offFile, blocks[0])
+		if err != nil {
+			printToLog(fmt.Sprintf("failed to update index: %v", err))
+		}
+	} else if len(blocks) > 1 || blocks[0].Height == 1 {
+		// Init DIR & OFF files based on DAT
+		err := initializeIndexFiles(datFile, dirFile, offFile)
+		if err != nil {
+			return fmt.Errorf("failed to init index files: %v", err)
+		}
+	}
+	return nil
 }
 
 // Given a new block, updates DIR & OFF
@@ -310,6 +332,7 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 	} else {
 		printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
 	}
+	printToLog("Successfully updated index")
 	return nil
 }
 

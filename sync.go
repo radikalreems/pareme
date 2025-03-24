@@ -51,15 +51,6 @@ func initFiles() error {
 	}
 	defer datFile.Close()
 
-	datFileStat, err := os.Stat(datFilePath)
-	if err != nil {
-		return fmt.Errorf("failed stating datFile %v", err)
-	}
-	if datFileStat.Size() == 0 {
-		writeBlock(datFile, genesisBlock())
-		printToLog(fmt.Sprintf("Created %s with genesis", datFilePath))
-	}
-
 	// Create DIR file / Wipe if it exists
 	dirFilePath := "blocks/dir0000.idx"
 	dirFile, err := os.Create(dirFilePath)
@@ -75,6 +66,19 @@ func initFiles() error {
 		return fmt.Errorf("failed creating %s: %v", offFilePath, err)
 	}
 	defer offFile.Close()
+
+	datFileStat, err := os.Stat(datFilePath)
+	if err != nil {
+		return fmt.Errorf("failed stating datFile %v", err)
+	}
+	if datFileStat.Size() == 0 {
+		blocks := []Block{genesisBlock()}
+		err := writeBlocks(datFile, dirFile, offFile, blocks)
+		if err != nil {
+			return fmt.Errorf("failed to write genesis: %v", err)
+		}
+		printToLog(fmt.Sprintf("Created %s with genesis", datFilePath))
+	}
 
 	// Init DIR & OFF files based on DAT
 	err = initializeIndexFiles(datFile, dirFile, offFile)
