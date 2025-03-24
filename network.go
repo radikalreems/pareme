@@ -439,6 +439,7 @@ func respondToMessage(request Message) Message {
 		for i := startHeight; i <= endHeight; i++ {
 			heights = append(heights, i)
 		}
+		printToLog(fmt.Sprintf("Recieved request for blocks %d to %d: %v", startHeight, endHeight, heights))
 		response := requestBlocks(heights)
 		var blocks []Block
 		for _, heightGroup := range response {

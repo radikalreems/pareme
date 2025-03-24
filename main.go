@@ -96,10 +96,12 @@ func main() {
 				fmt.Println("Please provide a range after 'request'")
 				continue
 			}
-			parts := strings.Split(input, "-")
+			heightRange := strings.TrimSpace(input[8:])
+			parts := strings.Split(heightRange, "-")
 			result := make([]byte, 8)
 			num1, _ := strconv.ParseUint(parts[0], 10, 32)
 			num2, _ := strconv.ParseUint(parts[1], 10, 32)
+			printToLog(fmt.Sprintf("Asking for blocks %d to %d", num1, num2))
 			binary.BigEndian.PutUint32(result[0:4], uint32(num1))
 			binary.BigEndian.PutUint32(result[4:8], uint32(num2))
 			response := requestAMessage(2, result) // Height | Payload:nil
