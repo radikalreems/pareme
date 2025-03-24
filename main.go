@@ -49,6 +49,13 @@ func main() {
 	}
 
 	// Sync chain data from peers
+	err = syncToPeers()
+	if err != nil {
+		printToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+		cancel()
+		wg.Wait()
+		return
+	}
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := minerManager(ctx, &wg, newBlockChan)
