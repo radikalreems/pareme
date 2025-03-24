@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -88,6 +90,19 @@ func main() {
 		case input == "height":
 			printToLog("Received 'height' command")
 			response := requestAMessage(1, nil) // Height | Payload:nil
+			println(describeMessage(response))
+		case input[0:7] == "request":
+			if len(input) <= 8 {
+				fmt.Println("Please provide a range after 'request'")
+				continue
+			}
+			parts := strings.Split(input, "-")
+			result := make([]byte, 8)
+			num1, _ := strconv.ParseUint(parts[0], 10, 32)
+			num2, _ := strconv.ParseUint(parts[1], 10, 32)
+			binary.BigEndian.PutUint32(result[0:4], uint32(num1))
+			binary.BigEndian.PutUint32(result[4:8], uint32(num2))
+			response := requestAMessage(2, result) // Height | Payload:nil
 			println(describeMessage(response))
 		default:
 			fmt.Println("Unknown command. Try 'stop'")

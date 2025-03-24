@@ -136,6 +136,7 @@ func verifyBlock(datFile, dirFile, offFile *os.File, b Block) (bool, error) {
 			if hashCheck == hashBlock(prior) {
 				selectPriors = append(selectPriors, prior)
 				hashCheck = prior.PrevHash
+				found = true
 				break
 			}
 		}
