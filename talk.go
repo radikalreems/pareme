@@ -57,14 +57,14 @@ func syncToPeers() error {
 
 	for i := range chunks {
 		//Determine chunk range
-		startHeight := latestHeight + i*100
-		endHeight := latestHeight + (i+1)*100
+		startHeight := (latestHeight + 1) + i*100
+		endHeight := (latestHeight) + (i+1)*100
 		if i == chunks-1 {
 			endHeight = latestHeightFromPeer
 		}
 
 		var heights []int
-		for j := startHeight; j < endHeight; j++ {
+		for j := startHeight; j < endHeight+1; j++ {
 			heights = append(heights, j)
 		}
 
@@ -73,7 +73,7 @@ func syncToPeers() error {
 		for j, value := range heights {
 			binary.BigEndian.PutUint32(heightsPayload[j*4:j*4+4], uint32(value))
 		}
-		blocksResponse := requestAMessage(3, heightsPayload)
+		blocksResponse := requestAMessage(2, heightsPayload)
 
 		// Sanity check on recieved Message from peer
 		if int(blocksResponse.PayloadSize) != len(blocksResponse.Payload) {
@@ -100,8 +100,19 @@ func syncToPeers() error {
 	return nil
 }
 
-func broadcastBlock(height int) {
-	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", height))
+func broadcastBlock(block Block) {
+	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", block.Height))
+
+	// Convert block to a [112]byte
+	bb := blockToByte(block)
+
+	// Convert [112]byte to a []byte
+	blockByte := bb[:]
+
+	// Send message and wait for response
+	response := requestAMessage(3, blockByte)
+
+	printToLog(describeMessage(response))
 }
 
 func respondToMessage(request Message) Message {
@@ -150,9 +161,29 @@ func respondToMessage(request Message) Message {
 			blockByte := blockToByte(block)
 			payload = append(payload, blockByte[:]...)
 		}
-
 		// Return response with all block data
 		return newMessage(1, 2, request.Reference, payload)
+	case 3: // Block Broadcast
+		// Check validity of payload size
+		if int(request.PayloadSize) != len(request.Payload) {
+			printToLog(fmt.Sprintf("Invalid payload size for ref %d. Says it's %v but it's %v",
+				request.Reference, request.PayloadSize, len(request.Payload)))
+			return Message{}
+		}
+		if request.PayloadSize == 0 {
+			printToLog(fmt.Sprintf("Empty payload for ref %d", request.Reference))
+			return Message{}
+		}
+
+		// Extract block from payload
+		block := byteToBlock([112]byte(request.Payload))
+
+		// Send to writer
+		blockPkg := []Block{block}
+		blockChan <- blockPkg
+
+		// Return a pong Message to send confirmation
+		return newMessage(1, 0, request.Reference, nil)
 	}
 
 	// Unknown command

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Global channels for communication between components
@@ -48,20 +49,18 @@ func main() {
 		return
 	}
 
-	/*
-		// Connect to a peer
-		dialIPChan <- "192.168.86.98"
-		time.Sleep(2 * time.Second)
+	// Connect to a peer
+	dialIPChan <- "192.168.86.98"
+	time.Sleep(2 * time.Second)
 
-		// Sync chain data from peers
-		err = syncToPeers()
-		if err != nil {
-			printToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
-			cancel()
-			wg.Wait()
-			return
-		}
-	*/
+	// Sync chain data from peers
+	err = syncToPeers()
+	if err != nil {
+		printToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+		cancel()
+		wg.Wait()
+		return
+	}
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := minerManager(ctx, &wg, newBlockChan)

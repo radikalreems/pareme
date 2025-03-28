@@ -83,7 +83,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x", block.Height, hash[:8]))
 				blocks := []Block{block}
 				blockChan <- blocks // Send to writer
-				broadcastBlock(block.Height)
+				broadcastBlock(block)
 
 			case blocks := <-newBlockChan:
 				// Handle new block heights from the chain
