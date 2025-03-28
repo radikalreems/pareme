@@ -91,6 +91,8 @@ func describeMessage(msg Message) string {
 		cmdStr = "Latest Height"
 	case 2:
 		cmdStr = "Block Request"
+	case 3:
+		cmdStr = "Block Broadcast"
 	default:
 		cmdStr = "Unknown Command"
 	}

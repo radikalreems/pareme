@@ -232,11 +232,11 @@ func managePeer(ctx context.Context, wg *sync.WaitGroup, peer Peer) {
 			case msgReq := <-RequestResponseChan:
 				// Add new requests to the slice
 				pendingRequests = append(pendingRequests, msgReq)
-				printToLog(fmt.Sprintf("Added request %d to pending list (total: %d)",
-					msgReq.Message.Reference, len(pendingRequests)))
+				//printToLog(fmt.Sprintf("Added request %d to pending list (total: %d)",
+				//msgReq.Message.Reference, len(pendingRequests)))
 
 			case received := <-readChan:
-				printToLog("Recieved from peer " + peer.Address + ": " + describeMessage(received))
+				printToLog("Recieved: " + describeMessage(received))
 				peer.LastSeen = time.Now()
 
 				if received.Kind == 1 { // This is a response
@@ -250,8 +250,8 @@ func managePeer(ctx context.Context, wg *sync.WaitGroup, peer Peer) {
 								// Remove from slice (swap and truncate)
 								pendingRequests[i] = pendingRequests[len(pendingRequests)-1]
 								pendingRequests = pendingRequests[:len(pendingRequests)-1]
-								printToLog(fmt.Sprintf("Matched response ref %d, removed from pending (remaining: %d)",
-									received.Reference, len(pendingRequests)))
+								//printToLog(fmt.Sprintf("Matched response ref %d, removed from pending (remaining: %d)",
+								//	received.Reference, len(pendingRequests)))
 							case <-req.MsgResponseChan:
 								// Channel already closed, just remove
 								pendingRequests[i] = pendingRequests[len(pendingRequests)-1]
@@ -323,7 +323,7 @@ func managePeer(ctx context.Context, wg *sync.WaitGroup, peer Peer) {
 						continue
 					}
 				}
-				printToLog("Sent to peer " + peer.Address + ": " + string(describeMessage(msgReq.Message)))
+				printToLog("Sent: " + describeMessage(msgReq.Message))
 				peer.LastSeen = time.Now()
 			}
 		}

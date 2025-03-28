@@ -57,7 +57,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 				return
 
 			case respChan := <-indexRequestChan:
-				printToLog("Recieved request for chain stats")
+				//printToLog("Recieved request for chain stats")
 				// Handle index read request
 				height, totalBlocks, err := getChainStats(datFile, dirFile)
 				if err != nil {
@@ -66,7 +66,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 				respChan <- [2]uint32{uint32(height), uint32(totalBlocks)}
 
 			case req := <-requestChan:
-				printToLog(fmt.Sprintf("writer: Recieved request for blocks: %v", req.Heights))
+				//printToLog(fmt.Sprintf("writer: Recieved request for blocks: %v", req.Heights))
 				// Handle block read request
 				response, err := readBlocksFromFile(datFile, dirFile, offFile, req.Heights)
 				if err != nil {
@@ -312,7 +312,7 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		}
 	}
 
-	datSlice, dirSlice, offSlice, err := displayIndexFiles(datFile, directoryFile, offsetFile)
+	datSlice, _, _, err := displayIndexFiles(datFile, directoryFile, offsetFile)
 	if err != nil {
 		return fmt.Errorf("failed to display index files: %v", err)
 	}
@@ -322,16 +322,18 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 	} else {
 		printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
 	}
-	if len(dirSlice) < 9 {
-		printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
-	} else {
-		printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
-	}
-	if len(offSlice) < 9 {
-		printToLog(fmt.Sprintf("Offset file: %v", offSlice))
-	} else {
-		printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
-	}
+	/*
+		if len(dirSlice) < 9 {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
+		} else {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
+		}
+		if len(offSlice) < 9 {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice))
+		} else {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
+		}
+	*/
 	printToLog("Successfully updated index")
 	return nil
 }
