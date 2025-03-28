@@ -107,7 +107,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 
 //---------------- DIRECT I/O FUNCTIONS
 
-// writeBlock appends a block to the .dat file
+// writeBlock appends blocks to the .dat file
 func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 
 	if len(blocks) < 1 {
@@ -437,47 +437,6 @@ func requestChainStats() (int, int) {
 }
 
 //--------------- QOL FUNCTIONS
-
-func byteToBlock(data [112]byte) Block {
-	var block Block
-	block.Height = int(binary.BigEndian.Uint32(data[:4]))
-	block.Timestamp = int64(binary.BigEndian.Uint64(data[4:12]))
-	copy(block.PrevHash[:], data[12:44])
-	block.Nonce = int(binary.BigEndian.Uint32(data[44:48]))
-	copy(block.Difficulty[:], data[48:80])
-	copy(block.BodyHash[:], data[80:112])
-	return block
-}
-
-func blockToByte(b Block) [112]byte {
-	var result [112]byte
-	var offset int
-
-	// Height: int (4 bytes)
-	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Height))
-	offset += 4
-
-	// Timestamp: int 64 (8 bytes)
-	binary.BigEndian.PutUint64(result[offset:offset+8], uint64(b.Timestamp))
-	offset += 8
-
-	// PrevHash: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.PrevHash[:])
-	offset += 32
-
-	// Nonce: int (4 bytes)
-	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Nonce))
-	offset += 4
-
-	// Difficulty: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.Difficulty[:])
-	offset += 32
-
-	// BodyHash: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.BodyHash[:])
-
-	return result
-}
 
 func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([]int, []uint32, []uint32, error) {
 	readAllUint32 := func(f *os.File) ([]uint32, error) {

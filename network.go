@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -32,34 +31,6 @@ const (
 )
 
 var AllPeers []Peer
-
-type Message struct {
-	Size        uint16 // Total length of the message, 2 bytes
-	Kind        uint8  // Request(0) or Response(1), 1 bytes
-	Command     uint8  // Specific action (e.g., if a request then 1=latest height, 2=block request), 1 byte
-	Reference   uint16 // Unique ID set by requester, echoed in response, 2 bytes
-	PayloadSize uint16 // Length of the payload only, 2 bytes
-	Payload     []byte // Variable-length data (heights, blocks, etc.)
-}
-
-type MessageRequest struct {
-	Message         Message
-	MsgResponseChan chan Message
-}
-
-func newMessage(kind uint8, command uint8, reference uint16, payload []byte) Message {
-	payloadSize := uint16(len(payload))
-	totalSize := uint16(8 + len(payload))
-
-	return Message{
-		Size:        totalSize,
-		Kind:        kind,
-		Command:     command,
-		Reference:   reference,
-		PayloadSize: payloadSize,
-		Payload:     payload,
-	}
-}
 
 // newPeer creates and initializes a new Peer instance
 func newPeer(address string, port string, conn net.Conn, isOutbound bool) Peer {
@@ -186,6 +157,11 @@ func managePeer(ctx context.Context, wg *sync.WaitGroup, peer Peer) {
 				peer.Conn.Close()
 				wgLast1.Wait()
 				return
+			case <-cancelChan:
+				printToLog(fmt.Sprintf("Connection closed for %v", peer.Address))
+				wgFirst2.Wait()
+				wgLast1.Wait()
+				return
 			default:
 				time.Sleep(1 * time.Second) // Prevent tight loop
 			}
@@ -215,6 +191,7 @@ func managePeer(ctx context.Context, wg *sync.WaitGroup, peer Peer) {
 					if !errors.Is(err, net.ErrClosed) {
 						printToLog("Error reading from peer")
 					}
+					close(cancelChan)
 					return
 				}
 				data := append(leftover, buff[:n]...) // Combine with leftovers
@@ -374,10 +351,6 @@ func connectToPeer(wg *sync.WaitGroup, ip string, pendingPeerChan chan Peer) {
 
 }
 
-func broadcastBlock(height int) {
-	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", height))
-}
-
 func SerializeMessage(msg Message) []byte {
 	totalLength := 8 + len(msg.Payload)
 
@@ -403,76 +376,4 @@ func SerializeMessage(msg Message) []byte {
 	copy(result[8:], msg.Payload)
 
 	return result
-}
-
-func respondToMessage(request Message) Message {
-	switch request.Command {
-	case 0: // Ping request
-		// No payload, simple pong response
-		return newMessage(1, 0, request.Reference, nil)
-
-	case 1: // Height request
-		// No payload, return current chain height as 4-byte uint32
-		height, _ := requestChainStats() // Ignore totalBlocks
-		buf := make([]byte, 4)
-		binary.BigEndian.PutUint32(buf, uint32(height))
-		return newMessage(1, 1, request.Reference, buf)
-
-	case 2: // Block range request
-		if len(request.Payload) != 8 {
-			printToLog(fmt.Sprintf("Invalid payload size for ref %d: got %d, want 8",
-				request.Reference, len(request.Payload)))
-			return Message{}
-		}
-
-		startHeight := int(binary.BigEndian.Uint32(request.Payload[0:4]))
-		endHeight := int(binary.BigEndian.Uint32(request.Payload[4:8]))
-
-		if startHeight > endHeight {
-			printToLog(fmt.Sprintf("Invalid range for ref %d: start %d > end %d",
-				request.Reference, startHeight, endHeight))
-			return Message{}
-		}
-
-		// Collect blocks in range (inclusive)
-		var heights []int
-		for i := startHeight; i <= endHeight; i++ {
-			heights = append(heights, i)
-		}
-		printToLog(fmt.Sprintf("Recieved request for blocks %d to %d: %v", startHeight, endHeight, heights))
-		response := requestBlocks(heights)
-		var blocks []Block
-		for _, heightGroup := range response {
-			blocks = append(blocks, heightGroup...)
-		}
-		var payload []byte
-		for _, block := range blocks {
-			blockByte := blockToByte(block)
-			payload = append(payload, blockByte[:]...)
-		}
-
-		// Return response with all block data
-		return newMessage(1, 2, request.Reference, payload)
-	}
-
-	// Unknown command
-	printToLog(fmt.Sprintf("Unknown command %d for ref %d", request.Command, request.Reference))
-	return Message{}
-}
-
-var nextReferenceNumber uint16 = 0 // Next reference number to use for request messages
-
-func requestAMessage(command uint8, payload []byte) Message {
-	msg := newMessage(0, command, nextReferenceNumber, payload)
-	nextReferenceNumber++
-
-	msgChan := make(chan Message)
-	msgReq := MessageRequest{
-		Message:         msg,
-		MsgResponseChan: msgChan,
-	}
-	AllPeers[0].SendChan <- msgReq
-	response := <-msgChan
-
-	return response
 }
