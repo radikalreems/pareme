@@ -72,6 +72,8 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 				if err != nil {
 					printToLog(fmt.Sprintf("Error reading blocks: %v", err))
 				}
+				//printToLog(fmt.Sprintf("writer: block %v read response: %v", req.Heights, response))
+				//printToLog(fmt.Sprintf("writer: block %v read response len: %v | len of first entry: %v", req.Heights, len(response), len(response[0])))
 				req.Response <- response
 
 			case blocks := <-blockChan:
@@ -154,7 +156,7 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 
 // Given a new block, updates DIR & OFF
 func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Block) error {
-	printToLog(fmt.Sprintf("\nUpdating index files after block %d was written", newBlock.Height))
+	//printToLog(fmt.Sprintf("\nUpdating index files after block %d was written", newBlock.Height))
 	// Calculate the new block's offset
 	datStat, err := datFile.Stat()
 	if err != nil {
@@ -182,11 +184,6 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 			return fmt.Errorf("failed to read DIR file: %v", err)
 		}
 
-		_, err = directoryFile.Seek(0, io.SeekEnd)
-		if err != nil {
-			return fmt.Errorf("failed to seek DIR file: %v", err)
-		}
-
 		dirStat, err := directoryFile.Stat()
 		if err != nil {
 			return fmt.Errorf("failed to stat DIR file: %v", err)
@@ -206,7 +203,7 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		}
 	}
 
-	// Read the value at the desired offset and then add 1 to it and the rest
+	// Read the offset value at the height based location
 	_, err = directoryFile.Seek(int64(dirIndex), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("failed to seek DIR file: %v", err)
@@ -247,6 +244,12 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		if err != nil {
 			return fmt.Errorf("failed to read DIR file: %v", err)
 		}
+
+		_, err = directoryFile.Seek(-4, io.SeekCurrent)
+		if err != nil {
+			return fmt.Errorf("failed to seek DIR file: %v", err)
+		}
+
 		err = binary.Write(directoryFile, binary.BigEndian, temp+1)
 		if err != nil {
 			return fmt.Errorf("failed to write to DIR file: %v", err)
@@ -312,7 +315,7 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		}
 	}
 
-	datSlice, _, _, err := displayIndexFiles(datFile, directoryFile, offsetFile)
+	datSlice, dirSlice, offSlice, err := displayIndexFiles(datFile, directoryFile, offsetFile)
 	if err != nil {
 		return fmt.Errorf("failed to display index files: %v", err)
 	}
@@ -322,19 +325,17 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 	} else {
 		printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
 	}
-	/*
-		if len(dirSlice) < 9 {
-			printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
-		} else {
-			printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
-		}
-		if len(offSlice) < 9 {
-			printToLog(fmt.Sprintf("Offset file: %v", offSlice))
-		} else {
-			printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
-		}
-	*/
-	printToLog("Successfully updated index")
+
+	if len(dirSlice) < 9 {
+		printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
+	} else {
+		printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
+	}
+	if len(offSlice) < 9 {
+		printToLog(fmt.Sprintf("Offset file: %v", offSlice))
+	} else {
+		printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
+	}
 	return nil
 }
 
@@ -440,7 +441,7 @@ func requestChainStats() (int, int) {
 
 //--------------- QOL FUNCTIONS
 
-func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([]int, []uint32, []uint32, error) {
+func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([][2]int, [][2]int, [][2]int, error) {
 	readAllUint32 := func(f *os.File) ([]uint32, error) {
 		// Seek to start just in case
 		if _, err := f.Seek(0, io.SeekStart); err != nil {
@@ -504,14 +505,20 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([]int, []ui
 	if err1 != nil {
 		return nil, nil, nil, err1
 	}
-	var heights []int
+	var idxDat [][2]int
 	for a := range a1 {
-		heights = append(heights, a1[a].Height)
+		internal := a1[a].Height
+		idxDat = append(idxDat, [2]int{a, internal})
 	}
 
 	a2, err2 := readAllUint32(directoryFile)
 	if err2 != nil {
 		return nil, nil, nil, err2
+	}
+	var idxDir [][2]int
+	for a := range a2 {
+		internal := int(a2[a])
+		idxDir = append(idxDir, [2]int{a, internal})
 	}
 
 	a3, err3 := readAllUint32(offsetFile)
@@ -519,5 +526,11 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([]int, []ui
 		return nil, nil, nil, err3
 	}
 
-	return heights, a2, a3, nil
+	var idxOff [][2]int
+	for a := range a3 {
+		internal := int(a3[a])
+		idxOff = append(idxOff, [2]int{a, internal})
+	}
+
+	return idxDat, idxDir, idxOff, nil
 }

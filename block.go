@@ -38,7 +38,7 @@ func genesisBlock() Block {
 		Timestamp:  1230940800000,
 		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Nonce:      0,
-		Difficulty: [32]byte{0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Difficulty: [32]byte{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		BodyHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	return block
@@ -65,7 +65,7 @@ func adjustDifficulty(i int) [32]byte {
 	prev10 := requestBlocks([]int{i - 10})[0][0]
 	currentBlock := requestBlocks([]int{i})[0][0]
 	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10
-	targetTime := float64(2000)
+	targetTime := float64(5000)
 	ratio := actualTime / targetTime
 
 	if ratio < 0.25 {

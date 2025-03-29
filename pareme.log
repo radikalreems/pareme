@@ -1,0 +1,877 @@
+
+Starting up network manager...
+Network listening on :8080
+
+Syncing blockchain from files...
+Initializing files
+Wrote Block 1 to file. Timestamp: 1230940800 secs.
+Syncing index files to dat...
+1 blocks in DAT
+Directory values: [1]
+Offset values: [0]
+Created blocks/pareme0000.dat with genesis
+Syncing index files to dat...
+1 blocks in DAT
+Directory values: [1]
+Offset values: [0]
+Synced to height 1 with 1 total blocks
+
+Starting up blockWriter...
+Connected to peer: 192.168.86.98:8080
+Added peer 192.168.86.98:8080 to AllPeers (total: 1)
+Sent: Request for Latest Height (Reference: 0, Payload Size: 0 bytes)
+Recieved: Response for Latest Height (Reference: 0, Payload Size: 4 bytes)
+Response for Latest Height (Reference: 0, Payload Size: 4 bytes)
+Already synced with peer!
+
+Initializing Miner...
+Recieved: Request for Block Broadcast (Reference: 0, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 0, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 2 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2]]
+Directory file: [[0 1] [1 2]]
+Offset file: [[0 0] [1 1]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 1, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 1, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 3 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3]]
+Directory file: [[0 1] [1 2] [2 3]]
+Offset file: [[0 0] [1 1] [2 2]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 2, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 2, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 4 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3] [3 4]]
+Directory file: [[0 1] [1 2] [2 3] [3 4]]
+Offset file: [[0 0] [1 1] [2 2] [3 3]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 3, Payload Size: 112 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+Sent: Response for Pong (Reference: 3, Payload Size: 0 bytes)
+1 verified | 0 failed | 0 orphaned
+Wrote Block 5 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3] [3 4] [4 5]]
+Directory file: [[0 1] [1 2] [2 3] [3 4] [4 5]]
+Offset file: [[0 0] [1 1] [2 2] [3 3] [4 4]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 4, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 4, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 6 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6]]
+Directory file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6]]
+Offset file: [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 5, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 5, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 7 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6] [6 7]]
+Directory file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6] [6 7]]
+Offset file: [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5] [6 6]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 6, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 6, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 8 to file. Timestamp: 1743273926 secs.
+Dat file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6] [6 7] [7 8]]
+Directory file: [[0 1] [1 2] [2 3] [3 4] [4 5] [5 6] [6 7] [7 8]]
+Offset file: [[0 0] [1 1] [2 2] [3 3] [4 4] [5 5] [6 6] [7 7]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 7, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 7, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 9 to file. Timestamp: 1743273926 secs.
+Dat file: [[1 2] [2 3] [3 4] [4 5] [5 6] [6 7] [7 8] [8 9]]
+Directory file: [[1 2] [2 3] [3 4] [4 5] [5 6] [6 7] [7 8] [8 9]]
+Offset file: [[1 1] [2 2] [3 3] [4 4] [5 5] [6 6] [7 7] [8 8]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 8, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 8, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 10 to file. Timestamp: 1743273926 secs.
+Dat file: [[2 3] [3 4] [4 5] [5 6] [6 7] [7 8] [8 9] [9 10]]
+Directory file: [[2 3] [3 4] [4 5] [5 6] [6 7] [7 8] [8 9] [9 10]]
+Offset file: [[2 2] [3 3] [4 4] [5 5] [6 6] [7 7] [8 8] [9 9]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 9, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 9, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 11 to file. Timestamp: 1743273926 secs.
+Dat file: [[3 4] [4 5] [5 6] [6 7] [7 8] [8 9] [9 10] [10 11]]
+Directory file: [[3 4] [4 5] [5 6] [6 7] [7 8] [8 9] [9 10] [10 11]]
+Offset file: [[3 3] [4 4] [5 5] [6 6] [7 7] [8 8] [9 9] [10 10]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 10, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 10, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 12 to file. Timestamp: 1743273926 secs.
+Dat file: [[4 5] [5 6] [6 7] [7 8] [8 9] [9 10] [10 11] [11 12]]
+Directory file: [[4 5] [5 6] [6 7] [7 8] [8 9] [9 10] [10 11] [11 12]]
+Offset file: [[4 4] [5 5] [6 6] [7 7] [8 8] [9 9] [10 10] [11 11]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 11, Payload Size: 112 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+Sent: Response for Pong (Reference: 11, Payload Size: 0 bytes)
+1 verified | 0 failed | 0 orphaned
+Wrote Block 13 to file. Timestamp: 1743273926 secs.
+Dat file: [[5 6] [6 7] [7 8] [8 9] [9 10] [10 11] [11 12] [12 13]]
+Directory file: [[5 6] [6 7] [7 8] [8 9] [9 10] [10 11] [11 12] [12 13]]
+Offset file: [[5 5] [6 6] [7 7] [8 8] [9 9] [10 10] [11 11] [12 12]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 12, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 12, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 14 to file. Timestamp: 1743273926 secs.
+Dat file: [[6 7] [7 8] [8 9] [9 10] [10 11] [11 12] [12 13] [13 14]]
+Directory file: [[6 7] [7 8] [8 9] [9 10] [10 11] [11 12] [12 13] [13 14]]
+Offset file: [[6 6] [7 7] [8 8] [9 9] [10 10] [11 11] [12 12] [13 13]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 13, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 13, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 15 to file. Timestamp: 1743273926 secs.
+Dat file: [[7 8] [8 9] [9 10] [10 11] [11 12] [12 13] [13 14] [14 15]]
+Directory file: [[7 8] [8 9] [9 10] [10 11] [11 12] [12 13] [13 14] [14 15]]
+Offset file: [[7 7] [8 8] [9 9] [10 10] [11 11] [12 12] [13 13] [14 14]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 14, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 14, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 16 to file. Timestamp: 1743273926 secs.
+Dat file: [[8 9] [9 10] [10 11] [11 12] [12 13] [13 14] [14 15] [15 16]]
+Directory file: [[8 9] [9 10] [10 11] [11 12] [12 13] [13 14] [14 15] [15 16]]
+Offset file: [[8 8] [9 9] [10 10] [11 11] [12 12] [13 13] [14 14] [15 15]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 15, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 15, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 17 to file. Timestamp: 1743273926 secs.
+Dat file: [[9 10] [10 11] [11 12] [12 13] [13 14] [14 15] [15 16] [16 17]]
+Directory file: [[9 10] [10 11] [11 12] [12 13] [13 14] [14 15] [15 16] [16 17]]
+Offset file: [[9 9] [10 10] [11 11] [12 12] [13 13] [14 14] [15 15] [16 16]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 16, Payload Size: 112 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+Sent: Response for Pong (Reference: 16, Payload Size: 0 bytes)
+1 verified | 0 failed | 0 orphaned
+Wrote Block 18 to file. Timestamp: 1743273926 secs.
+Dat file: [[10 11] [11 12] [12 13] [13 14] [14 15] [15 16] [16 17] [17 18]]
+Directory file: [[10 11] [11 12] [12 13] [13 14] [14 15] [15 16] [16 17] [17 18]]
+Offset file: [[10 10] [11 11] [12 12] [13 13] [14 14] [15 15] [16 16] [17 17]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 17, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 17, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 19 to file. Timestamp: 1743273926 secs.
+Dat file: [[11 12] [12 13] [13 14] [14 15] [15 16] [16 17] [17 18] [18 19]]
+Directory file: [[11 12] [12 13] [13 14] [14 15] [15 16] [16 17] [17 18] [18 19]]
+Offset file: [[11 11] [12 12] [13 13] [14 14] [15 15] [16 16] [17 17] [18 18]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 18, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 18, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 20 to file. Timestamp: 1743273926 secs.
+Dat file: [[12 13] [13 14] [14 15] [15 16] [16 17] [17 18] [18 19] [19 20]]
+Directory file: [[12 13] [13 14] [14 15] [15 16] [16 17] [17 18] [18 19] [19 20]]
+Offset file: [[12 12] [13 13] [14 14] [15 15] [16 16] [17 17] [18 18] [19 19]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 19, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 19, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 21 to file. Timestamp: 1743273926 secs.
+Dat file: [[13 14] [14 15] [15 16] [16 17] [17 18] [18 19] [19 20] [20 21]]
+Directory file: [[13 14] [14 15] [15 16] [16 17] [17 18] [18 19] [19 20] [20 21]]
+Offset file: [[13 13] [14 14] [15 15] [16 16] [17 17] [18 18] [19 19] [20 20]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 20, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 20, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 22 to file. Timestamp: 1743273926 secs.
+Dat file: [[14 15] [15 16] [16 17] [17 18] [18 19] [19 20] [20 21] [21 22]]
+Directory file: [[14 15] [15 16] [16 17] [17 18] [18 19] [19 20] [20 21] [21 22]]
+Offset file: [[14 14] [15 15] [16 16] [17 17] [18 18] [19 19] [20 20] [21 21]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 21, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 21, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 23 to file. Timestamp: 1743273926 secs.
+Dat file: [[15 16] [16 17] [17 18] [18 19] [19 20] [20 21] [21 22] [22 23]]
+Directory file: [[15 16] [16 17] [17 18] [18 19] [19 20] [20 21] [21 22] [22 23]]
+Offset file: [[15 15] [16 16] [17 17] [18 18] [19 19] [20 20] [21 21] [22 22]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 22, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 22, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 24 to file. Timestamp: 1743273926 secs.
+Dat file: [[16 17] [17 18] [18 19] [19 20] [20 21] [21 22] [22 23] [23 24]]
+Directory file: [[16 17] [17 18] [18 19] [19 20] [20 21] [21 22] [22 23] [23 24]]
+Offset file: [[16 16] [17 17] [18 18] [19 19] [20 20] [21 21] [22 22] [23 23]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 23, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 23, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 25 to file. Timestamp: 1743273926 secs.
+Dat file: [[17 18] [18 19] [19 20] [20 21] [21 22] [22 23] [23 24] [24 25]]
+Directory file: [[17 18] [18 19] [19 20] [20 21] [21 22] [22 23] [23 24] [24 25]]
+Offset file: [[17 17] [18 18] [19 19] [20 20] [21 21] [22 22] [23 23] [24 24]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 24, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 24, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 26 to file. Timestamp: 1743273926 secs.
+Dat file: [[18 19] [19 20] [20 21] [21 22] [22 23] [23 24] [24 25] [25 26]]
+Directory file: [[18 19] [19 20] [20 21] [21 22] [22 23] [23 24] [24 25] [25 26]]
+Offset file: [[18 18] [19 19] [20 20] [21 21] [22 22] [23 23] [24 24] [25 25]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 25, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 25, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 27 to file. Timestamp: 1743273926 secs.
+Dat file: [[19 20] [20 21] [21 22] [22 23] [23 24] [24 25] [25 26] [26 27]]
+Directory file: [[19 20] [20 21] [21 22] [22 23] [23 24] [24 25] [25 26] [26 27]]
+Offset file: [[19 19] [20 20] [21 21] [22 22] [23 23] [24 24] [25 25] [26 26]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 26, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 26, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 28 to file. Timestamp: 1743273926 secs.
+Dat file: [[20 21] [21 22] [22 23] [23 24] [24 25] [25 26] [26 27] [27 28]]
+Directory file: [[20 21] [21 22] [22 23] [23 24] [24 25] [25 26] [26 27] [27 28]]
+Offset file: [[20 20] [21 21] [22 22] [23 23] [24 24] [25 25] [26 26] [27 27]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 27, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 27, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 29 to file. Timestamp: 1743273926 secs.
+Dat file: [[21 22] [22 23] [23 24] [24 25] [25 26] [26 27] [27 28] [28 29]]
+Directory file: [[21 22] [22 23] [23 24] [24 25] [25 26] [26 27] [27 28] [28 29]]
+Offset file: [[21 21] [22 22] [23 23] [24 24] [25 25] [26 26] [27 27] [28 28]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 28, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 28, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 30 to file. Timestamp: 1743273926 secs.
+Dat file: [[22 23] [23 24] [24 25] [25 26] [26 27] [27 28] [28 29] [29 30]]
+Directory file: [[22 23] [23 24] [24 25] [25 26] [26 27] [27 28] [28 29] [29 30]]
+Offset file: [[22 22] [23 23] [24 24] [25 25] [26 26] [27 27] [28 28] [29 29]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 29, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 29, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 31 to file. Timestamp: 1743273926 secs.
+Dat file: [[23 24] [24 25] [25 26] [26 27] [27 28] [28 29] [29 30] [30 31]]
+Directory file: [[23 24] [24 25] [25 26] [26 27] [27 28] [28 29] [29 30] [30 31]]
+Offset file: [[23 23] [24 24] [25 25] [26 26] [27 27] [28 28] [29 29] [30 30]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 30, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 30, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 32 to file. Timestamp: 1743273926 secs.
+Dat file: [[24 25] [25 26] [26 27] [27 28] [28 29] [29 30] [30 31] [31 32]]
+Directory file: [[24 25] [25 26] [26 27] [27 28] [28 29] [29 30] [30 31] [31 32]]
+Offset file: [[24 24] [25 25] [26 26] [27 27] [28 28] [29 29] [30 30] [31 31]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 31, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 31, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 33 to file. Timestamp: 1743273926 secs.
+Dat file: [[25 26] [26 27] [27 28] [28 29] [29 30] [30 31] [31 32] [32 33]]
+Directory file: [[25 26] [26 27] [27 28] [28 29] [29 30] [30 31] [31 32] [32 33]]
+Offset file: [[25 25] [26 26] [27 27] [28 28] [29 29] [30 30] [31 31] [32 32]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 32, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 32, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 34 to file. Timestamp: 1743273926 secs.
+Dat file: [[26 27] [27 28] [28 29] [29 30] [30 31] [31 32] [32 33] [33 34]]
+Directory file: [[26 27] [27 28] [28 29] [29 30] [30 31] [31 32] [32 33] [33 34]]
+Offset file: [[26 26] [27 27] [28 28] [29 29] [30 30] [31 31] [32 32] [33 33]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 33, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 33, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 35 to file. Timestamp: 1743273926 secs.
+Dat file: [[27 28] [28 29] [29 30] [30 31] [31 32] [32 33] [33 34] [34 35]]
+Directory file: [[27 28] [28 29] [29 30] [30 31] [31 32] [32 33] [33 34] [34 35]]
+Offset file: [[27 27] [28 28] [29 29] [30 30] [31 31] [32 32] [33 33] [34 34]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 34, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 34, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 36 to file. Timestamp: 1743273926 secs.
+Dat file: [[28 29] [29 30] [30 31] [31 32] [32 33] [33 34] [34 35] [35 36]]
+Directory file: [[28 29] [29 30] [30 31] [31 32] [32 33] [33 34] [34 35] [35 36]]
+Offset file: [[28 28] [29 29] [30 30] [31 31] [32 32] [33 33] [34 34] [35 35]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 35, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 35, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 37 to file. Timestamp: 1743273926 secs.
+Dat file: [[29 30] [30 31] [31 32] [32 33] [33 34] [34 35] [35 36] [36 37]]
+Directory file: [[29 30] [30 31] [31 32] [32 33] [33 34] [34 35] [35 36] [36 37]]
+Offset file: [[29 29] [30 30] [31 31] [32 32] [33 33] [34 34] [35 35] [36 36]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 36, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 36, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 38 to file. Timestamp: 1743273926 secs.
+Dat file: [[30 31] [31 32] [32 33] [33 34] [34 35] [35 36] [36 37] [37 38]]
+Directory file: [[30 31] [31 32] [32 33] [33 34] [34 35] [35 36] [36 37] [37 38]]
+Offset file: [[30 30] [31 31] [32 32] [33 33] [34 34] [35 35] [36 36] [37 37]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 37, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 37, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 39 to file. Timestamp: 1743273926 secs.
+Dat file: [[31 32] [32 33] [33 34] [34 35] [35 36] [36 37] [37 38] [38 39]]
+Directory file: [[31 32] [32 33] [33 34] [34 35] [35 36] [36 37] [37 38] [38 39]]
+Offset file: [[31 31] [32 32] [33 33] [34 34] [35 35] [36 36] [37 37] [38 38]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 38, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 38, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 40 to file. Timestamp: 1743273926 secs.
+Dat file: [[32 33] [33 34] [34 35] [35 36] [36 37] [37 38] [38 39] [39 40]]
+Directory file: [[32 33] [33 34] [34 35] [35 36] [36 37] [37 38] [38 39] [39 40]]
+Offset file: [[32 32] [33 33] [34 34] [35 35] [36 36] [37 37] [38 38] [39 39]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 39, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 39, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 41 to file. Timestamp: 1743273926 secs.
+Dat file: [[33 34] [34 35] [35 36] [36 37] [37 38] [38 39] [39 40] [40 41]]
+Directory file: [[33 34] [34 35] [35 36] [36 37] [37 38] [38 39] [39 40] [40 41]]
+Offset file: [[33 33] [34 34] [35 35] [36 36] [37 37] [38 38] [39 39] [40 40]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 40, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 40, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 42 to file. Timestamp: 1743273927 secs.
+Dat file: [[34 35] [35 36] [36 37] [37 38] [38 39] [39 40] [40 41] [41 42]]
+Directory file: [[34 35] [35 36] [36 37] [37 38] [38 39] [39 40] [40 41] [41 42]]
+Offset file: [[34 34] [35 35] [36 36] [37 37] [38 38] [39 39] [40 40] [41 41]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 41, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 41, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 43 to file. Timestamp: 1743273927 secs.
+Dat file: [[35 36] [36 37] [37 38] [38 39] [39 40] [40 41] [41 42] [42 43]]
+Directory file: [[35 36] [36 37] [37 38] [38 39] [39 40] [40 41] [41 42] [42 43]]
+Offset file: [[35 35] [36 36] [37 37] [38 38] [39 39] [40 40] [41 41] [42 42]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 42, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 42, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 44 to file. Timestamp: 1743273927 secs.
+Dat file: [[36 37] [37 38] [38 39] [39 40] [40 41] [41 42] [42 43] [43 44]]
+Directory file: [[36 37] [37 38] [38 39] [39 40] [40 41] [41 42] [42 43] [43 44]]
+Offset file: [[36 36] [37 37] [38 38] [39 39] [40 40] [41 41] [42 42] [43 43]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 43, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 43, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 45 to file. Timestamp: 1743273927 secs.
+Dat file: [[37 38] [38 39] [39 40] [40 41] [41 42] [42 43] [43 44] [44 45]]
+Directory file: [[37 38] [38 39] [39 40] [40 41] [41 42] [42 43] [43 44] [44 45]]
+Offset file: [[37 37] [38 38] [39 39] [40 40] [41 41] [42 42] [43 43] [44 44]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 44, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 44, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 46 to file. Timestamp: 1743273927 secs.
+Dat file: [[38 39] [39 40] [40 41] [41 42] [42 43] [43 44] [44 45] [45 46]]
+Directory file: [[38 39] [39 40] [40 41] [41 42] [42 43] [43 44] [44 45] [45 46]]
+Offset file: [[38 38] [39 39] [40 40] [41 41] [42 42] [43 43] [44 44] [45 45]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 45, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 45, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 47 to file. Timestamp: 1743273928 secs.
+Dat file: [[39 40] [40 41] [41 42] [42 43] [43 44] [44 45] [45 46] [46 47]]
+Directory file: [[39 40] [40 41] [41 42] [42 43] [43 44] [44 45] [45 46] [46 47]]
+Offset file: [[39 39] [40 40] [41 41] [42 42] [43 43] [44 44] [45 45] [46 46]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 46, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 46, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 48 to file. Timestamp: 1743273928 secs.
+Dat file: [[40 41] [41 42] [42 43] [43 44] [44 45] [45 46] [46 47] [47 48]]
+Directory file: [[40 41] [41 42] [42 43] [43 44] [44 45] [45 46] [46 47] [47 48]]
+Offset file: [[40 40] [41 41] [42 42] [43 43] [44 44] [45 45] [46 46] [47 47]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 47, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 47, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 49 to file. Timestamp: 1743273928 secs.
+Dat file: [[41 42] [42 43] [43 44] [44 45] [45 46] [46 47] [47 48] [48 49]]
+Directory file: [[41 42] [42 43] [43 44] [44 45] [45 46] [46 47] [47 48] [48 49]]
+Offset file: [[41 41] [42 42] [43 43] [44 44] [45 45] [46 46] [47 47] [48 48]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 48, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 48, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 50 to file. Timestamp: 1743273928 secs.
+Dat file: [[42 43] [43 44] [44 45] [45 46] [46 47] [47 48] [48 49] [49 50]]
+Directory file: [[42 43] [43 44] [44 45] [45 46] [46 47] [47 48] [48 49] [49 50]]
+Offset file: [[42 42] [43 43] [44 44] [45 45] [46 46] [47 47] [48 48] [49 49]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 49, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 49, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 51 to file. Timestamp: 1743273928 secs.
+Dat file: [[43 44] [44 45] [45 46] [46 47] [47 48] [48 49] [49 50] [50 51]]
+Directory file: [[43 44] [44 45] [45 46] [46 47] [47 48] [48 49] [49 50] [50 51]]
+Offset file: [[43 43] [44 44] [45 45] [46 46] [47 47] [48 48] [49 49] [50 50]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 50, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 50, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 52 to file. Timestamp: 1743273929 secs.
+Dat file: [[44 45] [45 46] [46 47] [47 48] [48 49] [49 50] [50 51] [51 52]]
+Directory file: [[44 45] [45 46] [46 47] [47 48] [48 49] [49 50] [50 51] [51 52]]
+Offset file: [[44 44] [45 45] [46 46] [47 47] [48 48] [49 49] [50 50] [51 51]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 51, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 51, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 53 to file. Timestamp: 1743273930 secs.
+Dat file: [[45 46] [46 47] [47 48] [48 49] [49 50] [50 51] [51 52] [52 53]]
+Directory file: [[45 46] [46 47] [47 48] [48 49] [49 50] [50 51] [51 52] [52 53]]
+Offset file: [[45 45] [46 46] [47 47] [48 48] [49 49] [50 50] [51 51] [52 52]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 52, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 52, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 54 to file. Timestamp: 1743273930 secs.
+Dat file: [[46 47] [47 48] [48 49] [49 50] [50 51] [51 52] [52 53] [53 54]]
+Directory file: [[46 47] [47 48] [48 49] [49 50] [50 51] [51 52] [52 53] [53 54]]
+Offset file: [[46 46] [47 47] [48 48] [49 49] [50 50] [51 51] [52 52] [53 53]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 53, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 53, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 55 to file. Timestamp: 1743273931 secs.
+Dat file: [[47 48] [48 49] [49 50] [50 51] [51 52] [52 53] [53 54] [54 55]]
+Directory file: [[47 48] [48 49] [49 50] [50 51] [51 52] [52 53] [53 54] [54 55]]
+Offset file: [[47 47] [48 48] [49 49] [50 50] [51 51] [52 52] [53 53] [54 54]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 54, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 54, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 56 to file. Timestamp: 1743273932 secs.
+Dat file: [[48 49] [49 50] [50 51] [51 52] [52 53] [53 54] [54 55] [55 56]]
+Directory file: [[48 49] [49 50] [50 51] [51 52] [52 53] [53 54] [54 55] [55 56]]
+Offset file: [[48 48] [49 49] [50 50] [51 51] [52 52] [53 53] [54 54] [55 55]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 55, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 55, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 57 to file. Timestamp: 1743273932 secs.
+Dat file: [[49 50] [50 51] [51 52] [52 53] [53 54] [54 55] [55 56] [56 57]]
+Directory file: [[49 50] [50 51] [51 52] [52 53] [53 54] [54 55] [55 56] [56 57]]
+Offset file: [[49 49] [50 50] [51 51] [52 52] [53 53] [54 54] [55 55] [56 56]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 56, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 56, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 58 to file. Timestamp: 1743273933 secs.
+Dat file: [[50 51] [51 52] [52 53] [53 54] [54 55] [55 56] [56 57] [57 58]]
+Directory file: [[50 51] [51 52] [52 53] [53 54] [54 55] [55 56] [56 57] [57 58]]
+Offset file: [[50 50] [51 51] [52 52] [53 53] [54 54] [55 55] [56 56] [57 57]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 57, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 57, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 59 to file. Timestamp: 1743273934 secs.
+Dat file: [[51 52] [52 53] [53 54] [54 55] [55 56] [56 57] [57 58] [58 59]]
+Directory file: [[51 52] [52 53] [53 54] [54 55] [55 56] [56 57] [57 58] [58 59]]
+Offset file: [[51 51] [52 52] [53 53] [54 54] [55 55] [56 56] [57 57] [58 58]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 58, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 58, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 60 to file. Timestamp: 1743273935 secs.
+Dat file: [[52 53] [53 54] [54 55] [55 56] [56 57] [57 58] [58 59] [59 60]]
+Directory file: [[52 53] [53 54] [54 55] [55 56] [56 57] [57 58] [58 59] [59 60]]
+Offset file: [[52 52] [53 53] [54 54] [55 55] [56 56] [57 57] [58 58] [59 59]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 59, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 59, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 61 to file. Timestamp: 1743273936 secs.
+Dat file: [[53 54] [54 55] [55 56] [56 57] [57 58] [58 59] [59 60] [60 61]]
+Directory file: [[53 54] [54 55] [55 56] [56 57] [57 58] [58 59] [59 60] [60 61]]
+Offset file: [[53 53] [54 54] [55 55] [56 56] [57 57] [58 58] [59 59] [60 60]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 60, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 60, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 62 to file. Timestamp: 1743273936 secs.
+Dat file: [[54 55] [55 56] [56 57] [57 58] [58 59] [59 60] [60 61] [61 62]]
+Directory file: [[54 55] [55 56] [56 57] [57 58] [58 59] [59 60] [60 61] [61 62]]
+Offset file: [[54 54] [55 55] [56 56] [57 57] [58 58] [59 59] [60 60] [61 61]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 61, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 61, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 63 to file. Timestamp: 1743273937 secs.
+Dat file: [[55 56] [56 57] [57 58] [58 59] [59 60] [60 61] [61 62] [62 63]]
+Directory file: [[55 56] [56 57] [57 58] [58 59] [59 60] [60 61] [61 62] [62 63]]
+Offset file: [[55 55] [56 56] [57 57] [58 58] [59 59] [60 60] [61 61] [62 62]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 62, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 62, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 64 to file. Timestamp: 1743273937 secs.
+Dat file: [[56 57] [57 58] [58 59] [59 60] [60 61] [61 62] [62 63] [63 64]]
+Directory file: [[56 57] [57 58] [58 59] [59 60] [60 61] [61 62] [62 63] [63 64]]
+Offset file: [[56 56] [57 57] [58 58] [59 59] [60 60] [61 61] [62 62] [63 63]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 63, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 63, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 65 to file. Timestamp: 1743273940 secs.
+Dat file: [[57 58] [58 59] [59 60] [60 61] [61 62] [62 63] [63 64] [64 65]]
+Directory file: [[57 58] [58 59] [59 60] [60 61] [61 62] [62 63] [63 64] [64 65]]
+Offset file: [[57 57] [58 58] [59 59] [60 60] [61 61] [62 62] [63 63] [64 64]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 64, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 64, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 66 to file. Timestamp: 1743273940 secs.
+Dat file: [[58 59] [59 60] [60 61] [61 62] [62 63] [63 64] [64 65] [65 66]]
+Directory file: [[58 59] [59 60] [60 61] [61 62] [62 63] [63 64] [64 65] [65 66]]
+Offset file: [[58 58] [59 59] [60 60] [61 61] [62 62] [63 63] [64 64] [65 65]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 65, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 65, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 67 to file. Timestamp: 1743273941 secs.
+Dat file: [[59 60] [60 61] [61 62] [62 63] [63 64] [64 65] [65 66] [66 67]]
+Directory file: [[59 60] [60 61] [61 62] [62 63] [63 64] [64 65] [65 66] [66 67]]
+Offset file: [[59 59] [60 60] [61 61] [62 62] [63 63] [64 64] [65 65] [66 66]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 66, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 66, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 68 to file. Timestamp: 1743273943 secs.
+Dat file: [[60 61] [61 62] [62 63] [63 64] [64 65] [65 66] [66 67] [67 68]]
+Directory file: [[60 61] [61 62] [62 63] [63 64] [64 65] [65 66] [66 67] [67 68]]
+Offset file: [[60 60] [61 61] [62 62] [63 63] [64 64] [65 65] [66 66] [67 67]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 67, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 67, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 69 to file. Timestamp: 1743273946 secs.
+Dat file: [[61 62] [62 63] [63 64] [64 65] [65 66] [66 67] [67 68] [68 69]]
+Directory file: [[61 62] [62 63] [63 64] [64 65] [65 66] [66 67] [67 68] [68 69]]
+Offset file: [[61 61] [62 62] [63 63] [64 64] [65 65] [66 66] [67 67] [68 68]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 68, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 68, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 70 to file. Timestamp: 1743273954 secs.
+Dat file: [[62 63] [63 64] [64 65] [65 66] [66 67] [67 68] [68 69] [69 70]]
+Directory file: [[62 63] [63 64] [64 65] [65 66] [66 67] [67 68] [68 69] [69 70]]
+Offset file: [[62 62] [63 63] [64 64] [65 65] [66 66] [67 67] [68 68] [69 69]]
+Successfully wrote 1 new blocks!
+Recieved: Request for Block Broadcast (Reference: 69, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 69, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 71 to file. Timestamp: 1743273956 secs.
+Dat file: [[63 64] [64 65] [65 66] [66 67] [67 68] [68 69] [69 70] [70 71]]
+Directory file: [[63 64] [64 65] [65 66] [66 67] [67 68] [68 69] [69 70] [70 71]]
+Offset file: [[63 63] [64 64] [65 65] [66 66] [67 67] [68 68] [69 69] [70 70]]
+Successfully wrote 1 new blocks!
+Received 'start mine' command
+Adjusting Difficulty...
+0.401400 - Ratio
+0000006400000000 - Old Difficulty
+0000002823d70a3d - New Difficulty
+
+
+Starting miner at Block 72
+Finding Nonce for Block 72, Difficulty: 0000002823d70a3d
+Recieved: Request for Block Broadcast (Reference: 70, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 70, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 72 to file. Timestamp: 1743273958 secs.
+Dat file: [[64 65] [65 66] [66 67] [67 68] [68 69] [69 70] [70 71] [71 72]]
+Directory file: [[64 65] [65 66] [66 67] [67 68] [68 69] [69 70] [70 71] [71 72]]
+Offset file: [[64 64] [65 65] [66 66] [67 67] [68 68] [69 69] [70 70] [71 71]]
+Successfully wrote 1 new blocks!
+newBlocks: [72]
+Recieved: Request for Block Broadcast (Reference: 71, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 71, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 73 to file. Timestamp: 1743273966 secs.
+Dat file: [[65 66] [66 67] [67 68] [68 69] [69 70] [70 71] [71 72] [72 73]]
+Directory file: [[65 66] [66 67] [67 68] [68 69] [69 70] [70 71] [71 72] [72 73]]
+Offset file: [[65 65] [66 66] [67 67] [68 68] [69 69] [70 70] [71 71] [72 72]]
+Successfully wrote 1 new blocks!
+newBlocks: [72 73]
+Recieved: Request for Block Broadcast (Reference: 72, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 72, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 74 to file. Timestamp: 1743273970 secs.
+Dat file: [[66 67] [67 68] [68 69] [69 70] [70 71] [71 72] [72 73] [73 74]]
+Directory file: [[66 67] [67 68] [68 69] [69 70] [70 71] [71 72] [72 73] [73 74]]
+Offset file: [[66 66] [67 67] [68 68] [69 69] [70 70] [71 71] [72 72] [73 73]]
+Successfully wrote 1 new blocks!
+newBlocks: [72 73 74]
+Recieved: Request for Block Broadcast (Reference: 73, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 73, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 75 to file. Timestamp: 1743273987 secs.
+Dat file: [[67 68] [68 69] [69 70] [70 71] [71 72] [72 73] [73 74] [74 75]]
+Directory file: [[67 68] [68 69] [69 70] [70 71] [71 72] [72 73] [73 74] [74 75]]
+Offset file: [[67 67] [68 68] [69 69] [70 70] [71 71] [72 72] [73 73] [74 74]]
+Successfully wrote 1 new blocks!
+newBlocks: [72 73 74 75]
+Chain is ahead of miner. Chain: 75 | Miner: 72. Scrapping...
+Nonce search interrupted for Block 72
+
+----- Starting mining on block 76 at 2025-03-29 11:46:31.770722 -0700 PDT m=+78.883193145 -----
+Finding Nonce for Block 76, Difficulty: 0000002823d70a3d
+Recieved: Request for Block Broadcast (Reference: 74, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 74, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 76 to file. Timestamp: 1743273991 secs.
+Dat file: [[68 69] [69 70] [70 71] [71 72] [72 73] [73 74] [74 75] [75 76]]
+Directory file: [[68 69] [69 70] [70 71] [71 72] [72 73] [73 74] [74 75] [75 76]]
+Offset file: [[68 68] [69 69] [70 70] [71 71] [72 72] [73 73] [74 74] [75 75]]
+Successfully wrote 1 new blocks!
+newBlocks: [76]
+Recieved: Request for Block Broadcast (Reference: 75, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 75, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 77 to file. Timestamp: 1743274008 secs.
+Dat file: [[69 70] [70 71] [71 72] [72 73] [73 74] [74 75] [75 76] [76 77]]
+Directory file: [[69 70] [70 71] [71 72] [72 73] [73 74] [74 75] [75 76] [76 77]]
+Offset file: [[69 69] [70 70] [71 71] [72 72] [73 73] [74 74] [75 75] [76 76]]
+Successfully wrote 1 new blocks!
+newBlocks: [76 77]
+Recieved: Request for Block Broadcast (Reference: 76, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 76, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 78 to file. Timestamp: 1743274014 secs.
+Dat file: [[70 71] [71 72] [72 73] [73 74] [74 75] [75 76] [76 77] [77 78]]
+Directory file: [[70 71] [71 72] [72 73] [73 74] [74 75] [75 76] [76 77] [77 78]]
+Offset file: [[70 70] [71 71] [72 72] [73 73] [74 74] [75 75] [76 76] [77 77]]
+Successfully wrote 1 new blocks!
+newBlocks: [76 77 78]
+Chain is ahead of miner. Chain: 78 | Miner: 75. Scrapping...
+Nonce search interrupted for Block 76
+
+----- Starting mining on block 79 at 2025-03-29 11:46:55.041278 -0700 PDT m=+102.153476896 -----
+Finding Nonce for Block 79, Difficulty: 0000002823d70a3d
+Recieved: Request for Block Broadcast (Reference: 77, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 77, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 79 to file. Timestamp: 1743274015 secs.
+Dat file: [[71 72] [72 73] [73 74] [74 75] [75 76] [76 77] [77 78] [78 79]]
+Directory file: [[71 72] [72 73] [73 74] [74 75] [75 76] [76 77] [77 78] [78 79]]
+Offset file: [[71 71] [72 72] [73 73] [74 74] [75 75] [76 76] [77 77] [78 78]]
+Successfully wrote 1 new blocks!
+newBlocks: [79]
+Recieved: Request for Block Broadcast (Reference: 78, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 78, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 80 to file. Timestamp: 1743274022 secs.
+Dat file: [[72 73] [73 74] [74 75] [75 76] [76 77] [77 78] [78 79] [79 80]]
+Directory file: [[72 73] [73 74] [74 75] [75 76] [76 77] [77 78] [78 79] [79 80]]
+Offset file: [[72 72] [73 73] [74 74] [75 75] [76 76] [77 77] [78 78] [79 79]]
+Successfully wrote 1 new blocks!
+newBlocks: [79 80]
+Recieved: Request for Block Broadcast (Reference: 79, Payload Size: 112 bytes)
+Sent: Response for Pong (Reference: 79, Payload Size: 0 bytes)
+
+writer: Recieved 1 new blocks. verifying...
+1 verified | 0 failed | 0 orphaned
+Wrote Block 81 to file. Timestamp: 1743274031 secs.
+Dat file: [[73 74] [74 75] [75 76] [76 77] [77 78] [78 79] [79 80] [80 81]]
+Directory file: [[73 74] [74 75] [75 76] [76 77] [77 78] [78 79] [79 80] [80 81]]
+Offset file: [[73 73] [74 74] [75 75] [76 76] [77 77] [78 78] [79 79] [80 80]]
+Successfully wrote 1 new blocks!
+newBlocks: [79 80 81]
+Chain is ahead of miner. Chain: 81 | Miner: 78. Scrapping...
+Nonce search interrupted for Block 79
+Adjusting Difficulty...
+1.505320 - Ratio
+0000002823d70a3d - Old Difficulty
+0000003c6c6d6e98 - New Difficulty
+
+
+----- Starting mining on block 82 at 2025-03-29 11:47:14.573747 -0700 PDT m=+121.685716585 -----
+Finding Nonce for Block 82, Difficulty: 0000003c6c6d6e98
+Received 'stop mine' command
+Nonce search interrupted for Block 82
+Error reading from peer
+Connection closed for 192.168.86.98:8080
+Received 'stop' command
+peerMaker Shutting Down
+Block writer shutting down
+Network shutting down
+Listener closed
+Miner shutting down
+Printer shutting down

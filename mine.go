@@ -9,8 +9,9 @@ import (
 )
 
 var miningState struct {
-	Active bool
-	Height int
+	Active    bool
+	isFinding bool
+	Height    int
 }
 
 func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []int) chan int {
@@ -80,27 +81,32 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 			case block := <-minedBlockChan:
 				// Successfully mined a block; send it to the writer and broadcast
 				hash := hashBlock(block)
-				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x", block.Height, hash[:8]))
+				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x | ID: %x", block.Height, hash[:8], hash[30:]))
 				blocks := []Block{block}
 				blockChan <- blocks // Send to writer
 
 				broadcastBlock(block)
 
 			case blocks := <-newBlockChan:
-				// Handle new block heights from the chain
-
 				newBlocks = append(newBlocks, blocks...)
 				maxHeight := max(newBlocks)
+				printToLog(fmt.Sprintf("newBlocks: %v", newBlocks))
+
 				if maxHeight > miningState.Height+2 {
 					// Chain is 2+ blocks ahead; interrupt and discard current mining
-					interruptMiningChan <- struct{}{}
-					<-minedBlockChan // Discard interrupted result
+					printToLog(fmt.Sprintf("Chain is ahead of miner. Chain: %d | Miner: %d. Scrapping...", maxHeight, miningState.Height))
+					if miningState.isFinding {
+						interruptMiningChan <- struct{}{}
+						<-minedBlockChan
+					}
 				}
-				nextBlock := buildBlockForMining(maxHeight)
-				printToLog(fmt.Sprintf("\n----- Starting mining on block %d -----", nextBlock.Height))
-				miningState.Height = maxHeight
-				blockToMineChan <- nextBlock
-				newBlocks = nil // Reset height tracking
+				if !miningState.isFinding {
+					b := buildBlockForMining(maxHeight)
+					printToLog(fmt.Sprintf("\n----- Starting mining on block %d at %v -----", b.Height, time.Now()))
+					blockToMineChan <- b
+					miningState.Height = maxHeight
+					newBlocks = nil
+				}
 			}
 		}
 	}()
@@ -112,7 +118,9 @@ func mining(blockToMineChan <-chan Block, minedBlockChan chan<- Block, interrupt
 	for {
 		select {
 		case block := <-blockToMineChan: // Wait for a block to mine
+			miningState.isFinding = true
 			nonce := findNonce(block, interruptMiningChan)
+			miningState.isFinding = false
 			block.Nonce = nonce
 			minedBlockChan <- block // Send mined block back
 		case <-stopMiningChan:
