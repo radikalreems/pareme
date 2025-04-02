@@ -42,7 +42,12 @@ func syncToPeers() error {
 
 	// Compare local latest height to peers latest height
 	latestHeight, _ := requestChainStats()
-	heightReqResponse := requestAMessage(1, nil) // Height | payload: nil
+	var peerChoice int             // Which peer to ask
+	for pos, _ := range AllPeers { // Pick random peer
+		peerChoice = pos
+		break
+	}
+	heightReqResponse := requestAMessage(peerChoice, 1, nil) // Height | payload: nil
 	printToLog(describeMessage(heightReqResponse))
 	latestHeightFromPeer := int(binary.BigEndian.Uint32(heightReqResponse.Payload))
 	difference := latestHeightFromPeer - latestHeight
@@ -73,7 +78,14 @@ func syncToPeers() error {
 		for j, value := range heights {
 			binary.BigEndian.PutUint32(heightsPayload[j*4:j*4+4], uint32(value))
 		}
-		blocksResponse := requestAMessage(2, heightsPayload)
+
+		var peerChoice int             // Which peer to ask
+		for pos, _ := range AllPeers { // Pick random peer
+			peerChoice = pos
+			break
+		}
+
+		blocksResponse := requestAMessage(peerChoice, 2, heightsPayload)
 
 		// Sanity check on recieved Message from peer
 		if int(blocksResponse.PayloadSize) != len(blocksResponse.Payload) {
@@ -110,9 +122,12 @@ func broadcastBlock(block Block) {
 	blockByte := bb[:]
 
 	// Send message and wait for response
-	response := requestAMessage(3, blockByte)
-
-	printToLog(describeMessage(response))
+	var peerChoice int             // Which peer to ask
+	for pos, _ := range AllPeers { // Send to all peers
+		peerChoice = pos
+		response := requestAMessage(peerChoice, 3, blockByte)
+		printToLog(describeMessage(response))
+	}
 }
 
 func respondToMessage(request Message) Message {
@@ -191,7 +206,7 @@ func respondToMessage(request Message) Message {
 	return Message{}
 }
 
-func requestAMessage(command uint8, payload []byte) Message {
+func requestAMessage(peerPos int, command uint8, payload []byte) Message {
 	msg := newMessage(0, command, nextReferenceNumber, payload)
 	nextReferenceNumber++
 
@@ -200,7 +215,9 @@ func requestAMessage(command uint8, payload []byte) Message {
 		Message:         msg,
 		MsgResponseChan: msgChan,
 	}
-	AllPeers[0].SendChan <- msgReq
+
+	AllPeers[peerPos].SendChan <- msgReq
+	//AllPeers[0].SendChan <- msgReq
 	response := <-msgChan
 
 	return response

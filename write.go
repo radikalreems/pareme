@@ -315,7 +315,7 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		}
 	}
 
-	datSlice, dirSlice, offSlice, err := displayIndexFiles(datFile, directoryFile, offsetFile)
+	datSlice, _, _, err := displayIndexFiles(datFile, directoryFile, offsetFile)
 	if err != nil {
 		return fmt.Errorf("failed to display index files: %v", err)
 	}
@@ -326,16 +326,18 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 		printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
 	}
 
-	if len(dirSlice) < 9 {
-		printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
-	} else {
-		printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
-	}
-	if len(offSlice) < 9 {
-		printToLog(fmt.Sprintf("Offset file: %v", offSlice))
-	} else {
-		printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
-	}
+	/*
+		if len(dirSlice) < 9 {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
+		} else {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
+		}
+		if len(offSlice) < 9 {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice))
+		} else {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
+		}
+	*/
 	return nil
 }
 

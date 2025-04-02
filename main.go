@@ -99,11 +99,21 @@ func main() {
 			dialIPChan <- ip
 		case input == "ping":
 			printToLog("Received 'ping' command")
-			response := requestAMessage(0, nil) // Ping | Payload:nil
+			var peerChoice int             // Which peer to ask
+			for pos, _ := range AllPeers { // Pick random peer
+				peerChoice = pos
+				break
+			}
+			response := requestAMessage(peerChoice, 0, nil) // Ping | Payload:nil
 			println(describeMessage(response))
 		case input == "height":
 			printToLog("Received 'height' command")
-			response := requestAMessage(1, nil) // Height | Payload:nil
+			var peerChoice int             // Which peer to ask
+			for pos, _ := range AllPeers { // Pick random peer
+				peerChoice = pos
+				break
+			}
+			response := requestAMessage(peerChoice, 1, nil) // Height | Payload:nil
 			println(describeMessage(response))
 		case input[0:7] == "request":
 			if len(input) <= 8 {
@@ -117,7 +127,12 @@ func main() {
 			num2, _ := strconv.ParseUint(parts[1], 10, 32)
 			binary.BigEndian.PutUint32(result[0:4], uint32(num1))
 			binary.BigEndian.PutUint32(result[4:8], uint32(num2))
-			response := requestAMessage(2, result) // Height | Payload:nil
+			var peerChoice int             // Which peer to ask
+			for pos, _ := range AllPeers { // Pick random peer
+				peerChoice = pos
+				break
+			}
+			response := requestAMessage(peerChoice, 2, result) // Height | Payload:nil
 			println(describeMessage(response))
 		default:
 			fmt.Println("Unknown command. Try 'stop'")

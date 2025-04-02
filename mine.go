@@ -62,6 +62,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 						nextBlock := buildBlockForMining(currentHeight)
 
 						printToLog(fmt.Sprintf("\nStarting miner at Block %d", nextBlock.Height))
+						miningState.isFinding = true
 						blockToMineChan <- nextBlock
 
 						miningState.Active = true
@@ -98,11 +99,13 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					if miningState.isFinding {
 						interruptMiningChan <- struct{}{}
 						<-minedBlockChan
+						miningState.isFinding = false
 					}
 				}
 				if !miningState.isFinding {
 					b := buildBlockForMining(maxHeight)
 					printToLog(fmt.Sprintf("\n----- Starting mining on block %d at %v -----", b.Height, time.Now()))
+					miningState.isFinding = true
 					blockToMineChan <- b
 					miningState.Height = maxHeight
 					newBlocks = nil
@@ -118,10 +121,9 @@ func mining(blockToMineChan <-chan Block, minedBlockChan chan<- Block, interrupt
 	for {
 		select {
 		case block := <-blockToMineChan: // Wait for a block to mine
-			miningState.isFinding = true
 			nonce := findNonce(block, interruptMiningChan)
-			miningState.isFinding = false
 			block.Nonce = nonce
+			miningState.isFinding = false
 			minedBlockChan <- block // Send mined block back
 		case <-stopMiningChan:
 			return
