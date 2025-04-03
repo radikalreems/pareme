@@ -403,7 +403,7 @@ func readBlocksFromFile(datFile, directoryFile, offsetFile *os.File, heights []i
 			if !bytes.Equal(blockByte[:4], []byte("PARE")) {
 				return nil, fmt.Errorf("failed to find magic bytes")
 			}
-			block := byteToBlock([112]byte(blockByte[4:]))
+			block := byteToBlock([BlockSize]byte(blockByte[4:]))
 			blocks[i] = append(blocks[i], block)
 		}
 	}
@@ -480,7 +480,7 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([][2]int, [
 		}
 
 		numOfBlocks := int(fileSize / 116)
-		var values [][112]byte
+		var values [][BlockSize]byte
 		for i := 0; i < numOfBlocks; i++ {
 			_, err := f.Seek(4, io.SeekCurrent)
 			if err == io.EOF {
@@ -489,7 +489,7 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([][2]int, [
 			if err != nil {
 				return nil, err
 			}
-			var v [112]byte
+			var v [BlockSize]byte
 			err = binary.Read(f, binary.BigEndian, &v)
 			if err != nil {
 				return nil, err

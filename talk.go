@@ -93,10 +93,10 @@ func syncToPeers() error {
 		}
 
 		// Separate the payload into a slice of blockBytes
-		numOfBlocks := int(blocksResponse.PayloadSize / 112)
-		responseBlockBytes := make([][112]byte, numOfBlocks)
+		numOfBlocks := int(blocksResponse.PayloadSize / uint16(BlockSize))
+		responseBlockBytes := make([][BlockSize]byte, numOfBlocks)
 		for j := range numOfBlocks {
-			copy(responseBlockBytes[j][:], blocksResponse.Payload[j*112:(j+1)*112])
+			copy(responseBlockBytes[j][:], blocksResponse.Payload[j*BlockSize:(j+1)*BlockSize])
 		}
 
 		// Convert the blockBytes into Blocks
@@ -191,7 +191,7 @@ func respondToMessage(request Message) Message {
 		}
 
 		// Extract block from payload
-		block := byteToBlock([112]byte(request.Payload))
+		block := byteToBlock([BlockSize]byte(request.Payload))
 
 		// Send to writer
 		blockPkg := []Block{block}

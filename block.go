@@ -20,6 +20,8 @@ type Block struct { // FIELDS: 112 BYTES | IN FILE: 4 MAGIC + 112 = 116 BYTES
 	BodyHash   [32]byte // 32 bytes
 }
 
+const BlockSize int = 112
+
 func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]byte) Block {
 	block := Block{
 		Height:     height,
@@ -38,7 +40,7 @@ func genesisBlock() Block {
 		Timestamp:  1230940800000,
 		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		Nonce:      0,
-		Difficulty: [32]byte{0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Difficulty: [32]byte{200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		BodyHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	return block
@@ -250,7 +252,7 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, 
 
 //--------------- QOL FUNCTIONS
 
-func byteToBlock(data [112]byte) Block {
+func byteToBlock(data [BlockSize]byte) Block {
 	var block Block
 	block.Height = int(binary.BigEndian.Uint32(data[:4]))
 	block.Timestamp = int64(binary.BigEndian.Uint64(data[4:12]))
@@ -261,8 +263,8 @@ func byteToBlock(data [112]byte) Block {
 	return block
 }
 
-func blockToByte(b Block) [112]byte {
-	var result [112]byte
+func blockToByte(b Block) [BlockSize]byte {
+	var result [BlockSize]byte
 	var offset int
 
 	// Height: int (4 bytes)

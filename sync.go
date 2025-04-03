@@ -98,7 +98,7 @@ func initializeIndexFiles(datFile, directoryFile, offsetFile *os.File) error {
 	if err != nil {
 		return fmt.Errorf("failed to get DAT file stats: %v", err)
 	}
-	numBlocks := datStat.Size() / 116 // Each block is stored as 4 + 112 = 116 bytes
+	numBlocks := datStat.Size() / int64(BlockSize+4) // Each block is stored as 4 + 112 = 116 bytes
 	printToLog(fmt.Sprintf("%d blocks in DAT", numBlocks))
 
 	// Map to group offsets by height

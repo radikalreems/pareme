@@ -286,6 +286,7 @@ func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *
 			for _, req := range pendingRequests {
 				close(req.MsgResponseChan)
 			}
+			printToLog("handleIncoming Closing.")
 			return
 		case msgReq := <-RequestResponseChan:
 			// Add new requests to the slice
@@ -347,12 +348,13 @@ func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *
 	}
 }
 
-func handleOutgoing(peerCtx context.Context, wg *sync.WaitGroup, peer *Peer, RequestResponseChan chan MessageRequest) {
+func handleOutgoing(peerCtx context.Context, peerWg *sync.WaitGroup, peer *Peer, RequestResponseChan chan MessageRequest) {
 	// Handle outgoing messages
-	defer wg.Done()
+	defer peerWg.Done()
 	for {
 		select {
 		case <-peerCtx.Done():
+			printToLog("handleOutgoing Closing.")
 			return
 
 		case msgReq := <-peer.SendChan:

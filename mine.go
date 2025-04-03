@@ -37,20 +37,21 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 			select {
 			case <-ctx.Done():
 				// Shutdown triggered by context cancellation
-				if !miningState.Active {
+				if miningState.isFinding {
+					interruptMiningChan <- struct{}{}
+					block := <-minedBlockChan
+					if block.Nonce == -1 {
+						printToLog("Mining interrupted")
+					} else { // rare but possible
+						printToLog("Mining completed block before stopping")
+					}
+					printToLog("Miner shutting down")
+					return
+				} else {
 					printToLog("Miner shutting down")
 					stopMiningChan <- 1
 					return
 				}
-				interruptMiningChan <- struct{}{}
-				block := <-minedBlockChan
-				if block.Nonce == -1 {
-					printToLog("Mining interrupted")
-				} else { // rare but possible
-					printToLog("Mining completed block before stopping")
-				}
-				printToLog("Miner shutting down")
-				return
 
 			case consoleReq := <-consoleChan:
 				if consoleReq == 1 {
@@ -72,11 +73,16 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					if !miningState.Active {
 						printToLog("Already Not Mining!")
 					} else {
-						interruptMiningChan <- struct{}{}
-						<-minedBlockChan
+						if miningState.isFinding {
+							interruptMiningChan <- struct{}{}
+							<-minedBlockChan
 
-						miningState.Active = false
-						miningState.Height = 0
+							miningState.Active = false
+							miningState.Height = 0
+						} else {
+							miningState.Active = false
+							miningState.Height = 0
+						}
 					}
 				}
 			case block := <-minedBlockChan:
@@ -92,6 +98,9 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 				newBlocks = append(newBlocks, blocks...)
 				maxHeight := max(newBlocks)
 				printToLog(fmt.Sprintf("newBlocks: %v", newBlocks))
+				if !miningState.Active {
+					continue
+				}
 
 				if maxHeight > miningState.Height+2 {
 					// Chain is 2+ blocks ahead; interrupt and discard current mining
@@ -123,8 +132,8 @@ func mining(blockToMineChan <-chan Block, minedBlockChan chan<- Block, interrupt
 		case block := <-blockToMineChan: // Wait for a block to mine
 			nonce := findNonce(block, interruptMiningChan)
 			block.Nonce = nonce
-			miningState.isFinding = false
 			minedBlockChan <- block // Send mined block back
+			miningState.isFinding = false
 		case <-stopMiningChan:
 			return
 		}
@@ -181,7 +190,7 @@ func buildBlockForMining(height int) Block {
 	}
 	prevHash := hashBlock(currentBlock)
 	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
-	if (height-1)%10 == 0 && height != 1 {
+	if (height)%2016 == 0 && height != 1 {
 		// Adjust difficulty every 10 blocks (except genesis)
 		nextBlock.Difficulty = adjustDifficulty(height)
 	}
