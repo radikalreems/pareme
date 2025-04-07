@@ -95,7 +95,7 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 
 				// Broadcast to peers
 				for i := range len(verified) {
-					broadcastBlock(verified[i])
+					go broadcastBlock(verified[i])
 				}
 
 				// Inform miner

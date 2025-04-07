@@ -202,12 +202,14 @@ func respondToMessage(request Message) Message {
 				if hashBlock(bloc) == hashBlock(block) {
 					// Duplicate block
 					// Return a pong Message to send confirmation
+					printToLog(fmt.Sprintf("Duplicate block %v. Dropping.", block.Height))
 					return newMessage(1, 0, request.Reference, nil)
 				}
 			}
 		}
 
 		// Send to writer
+		printToLog(fmt.Sprintf("New block %v. Sending to writer.", block.Height))
 		blockPkg := []Block{block}
 		blockChan <- blockPkg
 
