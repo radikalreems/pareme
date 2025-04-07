@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"sort"
 )
 
 type Message struct {
@@ -314,6 +315,8 @@ func syncToPeers() error {
 	return nil
 }
 
+*/
+
 func filterBlocks(allBlocks [][]Block, referenceBlocks []Block) ([][]Block, error) {
 
 	// Create a copy to avoid modifying the original
@@ -374,5 +377,3 @@ func filterBlocks(allBlocks [][]Block, referenceBlocks []Block) ([][]Block, erro
 
 	return filteredBlocks, nil
 }
-
-*/

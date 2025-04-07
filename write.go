@@ -118,7 +118,7 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 
 	for _, block := range blocks {
 		// Serialize block to 116-byte array
-		data := make([]byte, 0, 116)
+		data := make([]byte, 0, BlockSize+4)
 
 		magic := []byte("PARE")
 
@@ -128,8 +128,8 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 			byte(block.Timestamp>>56), byte(block.Timestamp>>48), byte(block.Timestamp>>40), byte(block.Timestamp>>32),
 			byte(block.Timestamp>>24), byte(block.Timestamp>>16), byte(block.Timestamp>>8), byte(block.Timestamp))
 		data = append(data, block.PrevHash[:]...)
+		data = append(data, block.NBits[:]...)
 		data = append(data, byte(block.Nonce>>24), byte(block.Nonce>>16), byte(block.Nonce>>8), byte(block.Nonce))
-		data = append(data, block.Difficulty[:]...)
 		data = append(data, block.BodyHash[:]...)
 
 		// Write serialized data to file
@@ -162,8 +162,8 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlock Bloc
 	if err != nil {
 		return fmt.Errorf("failed to stat DAT file: %v", err)
 	}
-	numBlocks := datStat.Size() / 116  // Total number of blocks in DAT
-	newOffset := uint32(numBlocks - 1) // Offset the new block was written at
+	numBlocks := datStat.Size() / (int64(BlockSize) + 4) // Total number of blocks in DAT
+	newOffset := uint32(numBlocks - 1)                   // Offset the new block was written at
 
 	// Check if directory has the height we want
 	dirIndex := (newBlock.Height - 1) * 4 // The directory index to read given blocks height
@@ -390,14 +390,14 @@ func readBlocksFromFile(datFile, directoryFile, offsetFile *os.File, heights []i
 	// Obtain blocks
 	blocks := make([][]Block, len(heights))
 	for i := range blockLocs {
-		blockByte := make([]byte, 116)
+		blockByte := make([]byte, BlockSize+4)
 		for _, loc := range blockLocs[i] {
-			_, err := datFile.Seek(int64(loc*116), 0)
+			_, err := datFile.Seek(int64(loc*(uint32(BlockSize)+4)), 0)
 			if err != nil {
 				return nil, fmt.Errorf("failed to seek OFF file: %v", err)
 			}
 			n, err := datFile.Read(blockByte)
-			if n != 116 || err != nil {
+			if n != BlockSize+4 || err != nil {
 				return nil, fmt.Errorf("failed to read DAT file: %v", err)
 			}
 			if !bytes.Equal(blockByte[:4], []byte("PARE")) {
@@ -421,7 +421,7 @@ func getChainStats(datFile, directoryFile *os.File) (int, int, error) {
 		return 0, 0, fmt.Errorf("failed stating files: %v", err)
 	}
 	height := int(dirStat.Size() / 4)
-	totalBlocks := int(datStat.Size() / 116)
+	totalBlocks := int(datStat.Size() / (int64(BlockSize) + 4))
 	return height, totalBlocks, nil
 }
 
@@ -479,7 +479,7 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([][2]int, [
 			return nil, fmt.Errorf("fileSize not a multiple of 116")
 		}
 
-		numOfBlocks := int(fileSize / 116)
+		numOfBlocks := int(fileSize / (int64(BlockSize) + 4))
 		var values [][BlockSize]byte
 		for i := 0; i < numOfBlocks; i++ {
 			_, err := f.Seek(4, io.SeekCurrent)

@@ -11,93 +11,86 @@ import (
 	"time"
 )
 
-type Block struct { // FIELDS: 112 BYTES | IN FILE: 4 MAGIC + 112 = 116 BYTES
-	Height     int      // 4 bytes
-	Timestamp  int64    // 8 bytes
-	PrevHash   [32]byte // 32 bytes
-	Nonce      int      // 4 bytes
-	Difficulty [32]byte // 32 bytes
-	BodyHash   [32]byte // 32 bytes
+type Block struct { // FIELDS: 84 BYTES | IN FILE: 4 MAGIC + 84 = 88 BYTES
+	Height    int      // 4 bytes
+	Timestamp int64    // 8 bytes
+	PrevHash  [32]byte // 32 bytes
+	NBits     [4]byte  // 4 bytes
+	Nonce     int      // 4 bytes
+	BodyHash  [32]byte // 32 bytes
 }
 
-const BlockSize int = 112
+const (
+	BlockSize int = 84
+)
 
-func newBlock(height int, prevHash [32]byte, difficulty [32]byte, bodyHash [32]byte) Block {
+var (
+	MaxTarget = [32]byte{0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+)
+
+func newBlock(height int, prevHash [32]byte, nBits [4]byte, bodyHash [32]byte) Block {
 	block := Block{
-		Height:     height,
-		Timestamp:  time.Now().UnixMilli(),
-		PrevHash:   prevHash,
-		Nonce:      0,
-		Difficulty: difficulty,
-		BodyHash:   bodyHash,
+		Height:    height,
+		Timestamp: time.Now().UnixMilli(),
+		PrevHash:  prevHash,
+		Nonce:     0,
+		NBits:     nBits,
+		BodyHash:  bodyHash,
 	}
 	return block
 }
 
 func genesisBlock() Block {
 	block := Block{
-		Height:     1,
-		Timestamp:  1230940800000,
-		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Nonce:      0,
-		Difficulty: [32]byte{200, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		BodyHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Height:    1,
+		Timestamp: 1230940800000,
+		PrevHash:  [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Nonce:     0,
+		NBits:     [4]byte{0x1e, 0xFF, 0xFF, 0x00},
+		BodyHash:  [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	return block
 }
 
-func hashBlock(b Block) [32]byte {
+// Given a potential block, calculate the expected difficulty target.
+func determineDifficulty(nextBlock Block) ([32]byte, [4]byte, error) {
+	printToLog("Determining Difficulty...")
 
-	// Buffer Size:
-	// 4(height) + 8(timestamp) + 32(PrevHash) + 4(Nonce) + 32(Difficulty) + 32(BodyHash)
-	buf := make([]byte, 0, 112)
-	buf = binary.BigEndian.AppendUint32(buf, uint32(b.Height))
-	buf = binary.BigEndian.AppendUint64(buf, uint64(b.Timestamp))
-	buf = append(buf, b.PrevHash[:]...)
-	buf = binary.BigEndian.AppendUint32(buf, uint32(b.Nonce))
-	buf = append(buf, b.Difficulty[:]...)
-	buf = append(buf, b.BodyHash[:]...)
-	return sha256.Sum256(buf)
-}
-
-func adjustDifficulty(i int) [32]byte {
-
-	printToLog("Adjusting Difficulty...")
-
-	prev10 := requestBlocks([]int{i - 10})[0][0]
-	currentBlock := requestBlocks([]int{i})[0][0]
-	actualTime := float64(currentBlock.Timestamp-prev10.Timestamp) / 10
-	targetTime := float64(5000)
-	ratio := actualTime / targetTime
-
-	if ratio < 0.25 {
-		ratio = 0.25
-	} else if ratio > 4 {
-		ratio = 4
+	ratio, err := determineRatio(nextBlock)
+	if err != nil {
+		return [32]byte{}, [4]byte{}, fmt.Errorf("failed determining ratio: %v", err)
 	}
 
-	printToLog(fmt.Sprintf("%f - Ratio", ratio))
+	prevTarget := nBitsToTarget(nextBlock.NBits) // NBits -> Target
 
-	diffInt := new(big.Int).SetBytes(currentBlock.Difficulty[:])
-	ratioFloat := new(big.Float).SetFloat64(ratio)
-	newDiffFloat := new(big.Float).SetInt(diffInt)
-	newDiffFloat.Mul(newDiffFloat, ratioFloat)
-	newDiffInt, _ := newDiffFloat.Int(nil)
+	prevBig := new(big.Int).SetBytes(prevTarget[:])                            // Target -> BigInt Target
+	ratioBig := big.NewFloat(ratio)                                            // Ratio -> BigFloat Ratio
+	targetBig := new(big.Float).Mul(big.NewFloat(0).SetInt(prevBig), ratioBig) // BigTarget * BigRatio
+	newTargetInt, _ := targetBig.Int(nil)                                      // BigFloat Target -> BigInt Target
+	newTargetBytes := newTargetInt.Bytes()                                     // BigInt Target -> []byte Target
 
-	result := newDiffInt.Bytes()
-	var difficulty [32]byte
-	if len(result) > 32 {
-		copy(difficulty[:], result[len(result)-32:])
+	// Fit []byte Target into [32]byte
+	newTarget := [32]byte{}
+	if len(newTargetBytes) > 32 {
+		// length of Target is > 32, truncate to the rightmost
+		copy(newTarget[:], newTargetBytes[len(newTargetBytes)-32:])
 	} else {
-		copy(difficulty[32-len(result):], result)
+		// length of Target is <= 32, align by rightmost
+		copy(newTarget[32-len(newTargetBytes):], newTargetBytes)
 	}
 
-	printToLog(fmt.Sprintf("%x - Old Difficulty", currentBlock.Difficulty[:8]))
-	printToLog(fmt.Sprintf("%x - New Difficulty\n", difficulty[:8]))
+	if bytes.Compare(newTarget[:], MaxTarget[:]) > 0 {
+		newTarget = MaxTarget
+	}
 
-	return difficulty
+	nBits := targetToNBits(newTarget) // Target -> NBits
+
+	return newTarget, nBits, nil
+
 }
 
+// Complete verfication steps against given blocks
 func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, []Block, []Block, error) {
 
 	var verified []Block
@@ -181,7 +174,8 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, 
 
 		// Difficulty check
 		blockHash := hashBlock(b.Block)
-		diffVerified := bytes.Compare(blockHash[:], b.Block.Difficulty[:]) < 0
+		blockDifficulty := nBitsToTarget(b.Block.NBits)
+		diffVerified := bytes.Compare(blockHash[:], blockDifficulty[:]) < 0
 		if !diffVerified {
 			printToLog(fmt.Sprintf("failed verification: difficulty check at block %d", b.Block.Height))
 			failed = append(failed, b.Block)
@@ -257,40 +251,84 @@ func byteToBlock(data [BlockSize]byte) Block {
 	block.Height = int(binary.BigEndian.Uint32(data[:4]))
 	block.Timestamp = int64(binary.BigEndian.Uint64(data[4:12]))
 	copy(block.PrevHash[:], data[12:44])
-	block.Nonce = int(binary.BigEndian.Uint32(data[44:48]))
-	copy(block.Difficulty[:], data[48:80])
-	copy(block.BodyHash[:], data[80:112])
+	copy(block.NBits[:], data[44:48])
+	block.Nonce = int(binary.BigEndian.Uint32(data[48:52]))
+	copy(block.BodyHash[:], data[52:84])
 	return block
 }
 
 func blockToByte(b Block) [BlockSize]byte {
 	var result [BlockSize]byte
-	var offset int
 
 	// Height: int (4 bytes)
-	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Height))
-	offset += 4
+	binary.BigEndian.PutUint32(result[0:4], uint32(b.Height))
 
 	// Timestamp: int 64 (8 bytes)
-	binary.BigEndian.PutUint64(result[offset:offset+8], uint64(b.Timestamp))
-	offset += 8
+	binary.BigEndian.PutUint64(result[4:12], uint64(b.Timestamp))
 
 	// PrevHash: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.PrevHash[:])
-	offset += 32
+	copy(result[12:44], b.PrevHash[:])
+
+	// NBits: [4]byte (4 bytes)
+	copy(result[44:48], b.NBits[:])
 
 	// Nonce: int (4 bytes)
-	binary.BigEndian.PutUint32(result[offset:offset+4], uint32(b.Nonce))
-	offset += 4
-
-	// Difficulty: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.Difficulty[:])
-	offset += 32
+	binary.BigEndian.PutUint32(result[48:52], uint32(b.Nonce))
 
 	// BodyHash: [32]byte (32 bytes)
-	copy(result[offset:offset+32], b.BodyHash[:])
+	copy(result[52:84], b.BodyHash[:])
 
 	return result
+}
+
+func nBitsToTarget(nBits [4]byte) [32]byte {
+	size := int(nBits[0])
+	mantissa := uint32(nBits[1])<<16 | uint32(nBits[2])<<8 | uint32(nBits[3])
+
+	target := new(big.Int).SetUint64(uint64(mantissa))
+	if size > 3 {
+		target.Lsh(target, uint(8*(size-3)))
+	} else if size < 3 {
+		target.Rsh(target, uint(8*(3-size)))
+	}
+
+	bytes := target.Bytes()
+	result := [32]byte{}
+	if len(bytes) > 32 {
+		copy(result[:], bytes[len(bytes)-32:])
+	} else {
+		copy(result[32-len(bytes):], bytes)
+	}
+
+	return result
+}
+
+func targetToNBits(target [32]byte) [4]byte {
+	t := new(big.Int).SetBytes(target[:])
+	bytes := t.Bytes()
+	size := min(len(bytes), 255)
+
+	var mantissa uint32
+	if size == 0 {
+		return [4]byte{}
+	} else if size <= 3 {
+		mantissa = uint32(t.Uint64()) << (8 * (3 - size))
+	} else {
+		shifted := new(big.Int).Rsh(t, uint(8*(size-3)))
+		mantissa = uint32(shifted.Uint64())
+	}
+
+	return [4]byte{
+		byte(size),
+		byte(mantissa >> 16),
+		byte(mantissa >> 8),
+		byte(mantissa),
+	}
+}
+
+func hashBlock(b Block) [32]byte {
+	buf := blockToByte(b)
+	return sha256.Sum256(buf[:])
 }
 
 func medianTimestamp(ts []int64) int64 {
@@ -310,4 +348,49 @@ func maxAB(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func determineRatio(block Block) (float64, error) {
+	// Gather the last 2016 blocks
+	var heights []int
+	for i := block.Height - 2017; i < block.Height; i++ {
+		heights = append(heights, i)
+	}
+	printToLog(fmt.Sprintf("length of requested heights: %v | first & last height: %v, %v",
+		len(heights), heights[0], heights[len(heights)-1]))
+
+	unfilteredPrevBlocks := requestBlocks(heights)
+
+	if len(heights) != len(unfilteredPrevBlocks) {
+		return 0, fmt.Errorf("failed equality check on requested heights to blocks")
+	}
+
+	blocks := []Block{block}
+	prevBlocks, err := filterBlocks(unfilteredPrevBlocks, blocks)
+	if err != nil {
+		return 0, fmt.Errorf("failed to filter previous blocks: %v", err)
+	}
+
+	printToLog(fmt.Sprintf("len of filtered heights: %v, first & last heights: %v, %v",
+		len(prevBlocks), prevBlocks[0][0].Height, prevBlocks[len(prevBlocks)-1][0].Height))
+
+	firstTime := prevBlocks[len(prevBlocks)-1][0].Timestamp
+
+	sum := prevBlocks[0][0].Timestamp - firstTime
+
+	avg := float64(sum) / 2016
+
+	printToLog(fmt.Sprintf("average time: %v | ratio: %v", avg/1000, (avg/1000)/5))
+	printToLog(fmt.Sprintf("firstTime: %v | sum: %v", firstTime, sum))
+
+	ratio := float64(sum) / 20160000
+
+	if ratio < 0.25 {
+		ratio = 0.25
+	}
+	if ratio > 4 {
+		ratio = 4
+	}
+
+	return ratio, nil
 }

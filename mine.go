@@ -60,7 +60,11 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					} else {
 						// Start mining the next block based on the inital height
 						currentHeight, _ := requestChainStats()
-						nextBlock := buildBlockForMining(currentHeight)
+						nextBlock, err := buildBlockForMining(currentHeight)
+						if err != nil {
+							printToLog(fmt.Sprintf("Failed to build next block: %v", err))
+							continue
+						}
 
 						printToLog(fmt.Sprintf("\nStarting miner at Block %d", nextBlock.Height))
 						miningState.isFinding = true
@@ -112,7 +116,11 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					}
 				}
 				if !miningState.isFinding {
-					b := buildBlockForMining(maxHeight)
+					b, err := buildBlockForMining(maxHeight)
+					if err != nil {
+						printToLog(fmt.Sprintf("Failed to build next block: %v", err))
+						continue
+					}
 					printToLog(fmt.Sprintf("\n----- Starting mining on block %d at %v -----", b.Height, time.Now()))
 					miningState.isFinding = true
 					blockToMineChan <- b
@@ -144,7 +152,8 @@ func mining(blockToMineChan <-chan Block, minedBlockChan chan<- Block, interrupt
 // findNonce searches for a nonce that satifies the block's difficulty
 func findNonce(b Block, interruptChan <-chan struct{}) int {
 	start := time.Now().Unix()
-	printToLog(fmt.Sprintf("Finding Nonce for Block %d, Difficulty: %x", b.Height, b.Difficulty[:8]))
+	blockDifficulty := nBitsToTarget(b.NBits)
+	printToLog(fmt.Sprintf("Finding Nonce for Block %d, Difficulty: %x", b.Height, blockDifficulty[:8]))
 
 	for i := 1; i <= 1_000_000_000; i++ {
 		if i%1000 == 0 {
@@ -157,7 +166,7 @@ func findNonce(b Block, interruptChan <-chan struct{}) int {
 		}
 		b.Nonce = i
 		hash := hashBlock(b)
-		if bytes.Compare(hash[:], b.Difficulty[:]) < 0 {
+		if bytes.Compare(hash[:], blockDifficulty[:]) < 0 {
 			printToLog(fmt.Sprintf("Nonce %d found in %d seconds", b.Nonce, time.Now().Unix()-start))
 			return b.Nonce
 		}
@@ -181,7 +190,7 @@ func max(heights []int) int {
 }
 
 // buildBlockForMining constructs a new block for mining based on the current height
-func buildBlockForMining(height int) Block {
+func buildBlockForMining(height int) (Block, error) {
 	var currentBlock Block
 	if height == 1 {
 		currentBlock = genesisBlock()
@@ -189,10 +198,15 @@ func buildBlockForMining(height int) Block {
 		currentBlock = requestBlocks([]int{height})[0][0]
 	}
 	prevHash := hashBlock(currentBlock)
-	nextBlock := newBlock(height+1, prevHash, currentBlock.Difficulty, currentBlock.BodyHash)
-	if (height)%2016 == 0 && height != 1 {
-		// Adjust difficulty every 10 blocks (except genesis)
-		nextBlock.Difficulty = adjustDifficulty(height)
+	nextBlock := newBlock(height+1, prevHash, currentBlock.NBits, currentBlock.BodyHash)
+	if (height)%2016 == 0 && height != 2016 { // Skip first ever adjustment
+		// Adjust difficulty every 2016 blocks (except genesis)
+		//nextBlock.Difficulty = adjustDifficulty(nextBlock)
+		_, nBits, err := determineDifficulty(nextBlock)
+		if err != nil {
+			return Block{}, fmt.Errorf("failed to determine difficulty: %v", err)
+		}
+		nextBlock.NBits = nBits
 	}
-	return nextBlock
+	return nextBlock, nil
 }
