@@ -79,7 +79,14 @@ func networkManager(ctx context.Context, wg *sync.WaitGroup) chan string {
 				pendingPeer.Context = peerCtx
 
 				// Add peer to global map
-				AllPeers[0] = &pendingPeer
+				for i := range 10 { // Max 10 peers
+					_, exists := AllPeers[i]
+					if exists {
+						continue
+					}
+					AllPeers[i] = &pendingPeer
+					break
+				}
 				printToLog(fmt.Sprintf("Added peer %s to AllPeers (total: %d)",
 					pendingPeer.Address, len(AllPeers)))
 

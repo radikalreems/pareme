@@ -92,6 +92,13 @@ func blockWriter(ctx context.Context, wg *sync.WaitGroup) (chan []int, error) {
 					continue
 				}
 				printToLog(fmt.Sprintf("Successfully wrote %d new blocks!", len(verified)))
+
+				// Broadcast to peers
+				for i := range len(verified) {
+					broadcastBlock(verified[i])
+				}
+
+				// Inform miner
 				if miningState.Active {
 					var heights []int
 					for _, v := range verified {
@@ -117,7 +124,7 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 	}
 
 	for _, block := range blocks {
-		// Serialize block to 116-byte array
+		// Serialize block to 88-byte array
 		data := make([]byte, 0, BlockSize+4)
 
 		magic := []byte("PARE")
@@ -475,8 +482,8 @@ func displayIndexFiles(datFile, directoryFile, offsetFile *os.File) ([][2]int, [
 			return nil, err
 		}
 		fileSize := fileStat.Size()
-		if fileSize%116 != 0 {
-			return nil, fmt.Errorf("fileSize not a multiple of 116")
+		if fileSize%(int64(BlockSize)+4) != 0 {
+			return nil, fmt.Errorf("fileSize not a multiple of 88")
 		}
 
 		numOfBlocks := int(fileSize / (int64(BlockSize) + 4))

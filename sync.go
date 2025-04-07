@@ -27,7 +27,7 @@ func syncChain() error {
 		return fmt.Errorf("failed stating files: %v", err)
 	}
 	height := int(dirStat.Size() / 4)
-	totalBlocks := int(datStat.Size() / 116)
+	totalBlocks := int(datStat.Size() / (int64(BlockSize) + 4))
 	printToLog(fmt.Sprintf("Synced to height %d with %d total blocks", height, totalBlocks))
 
 	return nil
@@ -98,7 +98,7 @@ func initializeIndexFiles(datFile, directoryFile, offsetFile *os.File) error {
 	if err != nil {
 		return fmt.Errorf("failed to get DAT file stats: %v", err)
 	}
-	numBlocks := datStat.Size() / int64(BlockSize+4) // Each block is stored as 4 + 112 = 116 bytes
+	numBlocks := datStat.Size() / int64(BlockSize+4) // Each block is stored as 4 + 84 = 88 bytes
 	printToLog(fmt.Sprintf("%d blocks in DAT", numBlocks))
 
 	// Map to group offsets by height
@@ -107,7 +107,7 @@ func initializeIndexFiles(datFile, directoryFile, offsetFile *os.File) error {
 	// Read each block's height and record its offset
 	for offset := uint32(0); offset < uint32(numBlocks); offset++ {
 		// Seek to the block's start
-		_, err := datFile.Seek(int64(offset*116), 0)
+		_, err := datFile.Seek(int64(offset*(uint32(BlockSize)+4)), 0)
 		if err != nil {
 			return fmt.Errorf("failed to seek in DAT file: %v", err)
 		}
@@ -116,10 +116,10 @@ func initializeIndexFiles(datFile, directoryFile, offsetFile *os.File) error {
 		magicCheck := make([]byte, 4)
 		_, err = datFile.Read(magicCheck)
 		if err != nil {
-			return fmt.Errorf("failed to read magic byte for block offset %d", offset/116)
+			return fmt.Errorf("failed to read magic byte for block offset %d", offset/(uint32(BlockSize)+4))
 		}
 		if string(magicCheck) != "PARE" {
-			return fmt.Errorf("failed to verify magic byte for block offset %d", offset/116)
+			return fmt.Errorf("failed to verify magic byte for block offset %d", offset/(uint32(BlockSize)+4))
 		}
 
 		// Read the next 4 bytes (Height)

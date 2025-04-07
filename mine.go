@@ -96,7 +96,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 				blocks := []Block{block}
 				blockChan <- blocks // Send to writer
 
-				broadcastBlock(block)
+				//broadcastBlock(block)
 
 			case blocks := <-newBlockChan:
 				newBlocks = append(newBlocks, blocks...)

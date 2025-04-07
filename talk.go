@@ -116,10 +116,10 @@ func syncToPeers() error {
 func broadcastBlock(block Block) {
 	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", block.Height))
 
-	// Convert block to a [112]byte
+	// Convert block to a [84]byte
 	bb := blockToByte(block)
 
-	// Convert [112]byte to a []byte
+	// Convert [84]byte to a []byte
 	blockByte := bb[:]
 
 	// Send message and wait for response
@@ -194,6 +194,19 @@ func respondToMessage(request Message) Message {
 		// Extract block from payload
 		block := byteToBlock([BlockSize]byte(request.Payload))
 
+		// Check if duplicate block
+		height, _ := requestChainStats()
+		if height >= block.Height {
+			blocks := requestBlocks([]int{block.Height})[0]
+			for _, bloc := range blocks {
+				if hashBlock(bloc) == hashBlock(block) {
+					// Duplicate block
+					// Return a pong Message to send confirmation
+					return newMessage(1, 0, request.Reference, nil)
+				}
+			}
+		}
+
 		// Send to writer
 		blockPkg := []Block{block}
 		blockChan <- blockPkg
@@ -223,99 +236,6 @@ func requestAMessage(peerPos int, command uint8, payload []byte) Message {
 
 	return response
 }
-
-// Later upgrade to syncing
-/*
-
-func syncToPeers() error {
-
-	// Only sync if there are peers
-	if len(AllPeers) == 0 {
-		return nil
-	}
-
-	// Compare local latest height to peers latest height
-	latestHeight, _ := requestChainStats()
-	response := requestAMessage(1, nil) // Height | Payload:nil
-	printToLog(describeMessage(response))
-	latestHeightFromPeer := int(binary.BigEndian.Uint32(response.Payload))
-	difference := latestHeightFromPeer - latestHeight
-	if difference > 10 {
-		printToLog(fmt.Sprintf("Chain is out of sync with peer: lastest %d | latest from peer %d", latestHeight, latestHeightFromPeer))
-	} else {
-		printToLog("Already synced with peer!")
-		return nil
-	}
-
-	// Loop through 100 blocks at a time, starting with the highest - decreasing
-	var referenceBlocks []Block
-	for i := difference / 100; i >= 0; i-- {
-		var heights []int
-
-		// First batch is only up to peers latest height
-		cap := min(latestHeight+100*(i+1), latestHeightFromPeer)
-		for j := latestHeight + 100*i; j < cap; j++ {
-			heights = append(heights, j)
-		}
-
-		// Create / Send / Recieve Message for blocks from peer
-		heightsPayload := make([]byte, len(heights)*4)
-		for i, value := range heights {
-			binary.BigEndian.PutUint32(heightsPayload[i*4:i*4+4], uint32(value))
-		}
-		blocksResponse := requestAMessage(3, heightsPayload)
-
-		// Sanity check on recieved Message from peer
-		if int(blocksResponse.PayloadSize) != len(blocksResponse.Payload) {
-			return fmt.Errorf("response payloadsize is not equal to calculated size")
-		}
-
-		// Separate the payload into a slice of blockBytes
-		numOfBlocks := int(blocksResponse.PayloadSize / 112)
-		responseBlockBytes := make([][112]byte, numOfBlocks)
-		for i := range numOfBlocks {
-			copy(responseBlockBytes[i][:], blocksResponse.Payload[i*112:(i+1)*112])
-		}
-
-		// Convert the blockBytes into Blocks
-		var responseBlocks []Block
-		for _, blockByte := range responseBlockBytes {
-			responseBlocks = append(responseBlocks, byteToBlock(blockByte))
-		}
-
-		// Groups blocks by height into a map
-		heightMap := make(map[int][]Block)
-		for _, block := range responseBlocks {
-			heightMap[block.Height] = append(heightMap[block.Height], block)
-		}
-		// Creates hgBlocks (height-grouped Blocks) - unordered
-		hgBlocks := make([][]Block, 0, len(heightMap))
-		for _, group := range heightMap {
-			hgBlocks = append(hgBlocks, group)
-		}
-
-		// Creates filtered and ordered hgBlocks
-		hgBlocks_filtered, err := filterBlocks(hgBlocks, referenceBlocks)
-		if err != nil {
-			return fmt.Errorf("failed to filter blocks: %v", err)
-		}
-
-		// Updates the reference blocks to use next cylce
-		referenceBlocks = append(referenceBlocks, hgBlocks_filtered[len(hgBlocks_filtered)-1]...)
-
-		// Send the filtered blocks to be verified and written
-		var blocksToWrite []Block
-		for _, bloc := range hgBlocks_filtered {
-			blocksToWrite = append(blocksToWrite, bloc...)
-		}
-
-		blockChan <- blocksToWrite
-	}
-
-	return nil
-}
-
-*/
 
 func filterBlocks(allBlocks [][]Block, referenceBlocks []Block) ([][]Block, error) {
 
@@ -377,3 +297,96 @@ func filterBlocks(allBlocks [][]Block, referenceBlocks []Block) ([][]Block, erro
 
 	return filteredBlocks, nil
 }
+
+// Later upgrade to syncing
+/*
+
+func syncToPeers() error {
+
+	// Only sync if there are peers
+	if len(AllPeers) == 0 {
+		return nil
+	}
+
+	// Compare local latest height to peers latest height
+	latestHeight, _ := requestChainStats()
+	response := requestAMessage(1, nil) // Height | Payload:nil
+	printToLog(describeMessage(response))
+	latestHeightFromPeer := int(binary.BigEndian.Uint32(response.Payload))
+	difference := latestHeightFromPeer - latestHeight
+	if difference > 10 {
+		printToLog(fmt.Sprintf("Chain is out of sync with peer: lastest %d | latest from peer %d", latestHeight, latestHeightFromPeer))
+	} else {
+		printToLog("Already synced with peer!")
+		return nil
+	}
+
+	// Loop through 100 blocks at a time, starting with the highest - decreasing
+	var referenceBlocks []Block
+	for i := difference / 100; i >= 0; i-- {
+		var heights []int
+
+		// First batch is only up to peers latest height
+		cap := min(latestHeight+100*(i+1), latestHeightFromPeer)
+		for j := latestHeight + 100*i; j < cap; j++ {
+			heights = append(heights, j)
+		}
+
+		// Create / Send / Recieve Message for blocks from peer
+		heightsPayload := make([]byte, len(heights)*4)
+		for i, value := range heights {
+			binary.BigEndian.PutUint32(heightsPayload[i*4:i*4+4], uint32(value))
+		}
+		blocksResponse := requestAMessage(3, heightsPayload)
+
+		// Sanity check on recieved Message from peer
+		if int(blocksResponse.PayloadSize) != len(blocksResponse.Payload) {
+			return fmt.Errorf("response payloadsize is not equal to calculated size")
+		}
+
+		// Separate the payload into a slice of blockBytes
+		numOfBlocks := int(blocksResponse.PayloadSize / 84)
+		responseBlockBytes := make([][84]byte, numOfBlocks)
+		for i := range numOfBlocks {
+			copy(responseBlockBytes[i][:], blocksResponse.Payload[i*84:(i+1)*84])
+		}
+
+		// Convert the blockBytes into Blocks
+		var responseBlocks []Block
+		for _, blockByte := range responseBlockBytes {
+			responseBlocks = append(responseBlocks, byteToBlock(blockByte))
+		}
+
+		// Groups blocks by height into a map
+		heightMap := make(map[int][]Block)
+		for _, block := range responseBlocks {
+			heightMap[block.Height] = append(heightMap[block.Height], block)
+		}
+		// Creates hgBlocks (height-grouped Blocks) - unordered
+		hgBlocks := make([][]Block, 0, len(heightMap))
+		for _, group := range heightMap {
+			hgBlocks = append(hgBlocks, group)
+		}
+
+		// Creates filtered and ordered hgBlocks
+		hgBlocks_filtered, err := filterBlocks(hgBlocks, referenceBlocks)
+		if err != nil {
+			return fmt.Errorf("failed to filter blocks: %v", err)
+		}
+
+		// Updates the reference blocks to use next cylce
+		referenceBlocks = append(referenceBlocks, hgBlocks_filtered[len(hgBlocks_filtered)-1]...)
+
+		// Send the filtered blocks to be verified and written
+		var blocksToWrite []Block
+		for _, bloc := range hgBlocks_filtered {
+			blocksToWrite = append(blocksToWrite, bloc...)
+		}
+
+		blockChan <- blocksToWrite
+	}
+
+	return nil
+}
+
+*/
