@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -14,7 +16,7 @@ var miningState struct {
 	Height    int
 }
 
-func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []int) chan int {
+func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []int) chan string {
 	printToLog("\nInitializing Miner...")
 
 	// Channels for mining coordination
@@ -22,7 +24,9 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 	interruptMiningChan := make(chan struct{}, 1) // Signals mining interruption
 	stopMiningChan := make(chan int)              // Signals mining to stop
 	minedBlockChan := make(chan Block)            // Revieves mined blocks
-	consoleChan := make(chan int)                 // Connect with console
+	consoleChan := make(chan string)              // Connect with console
+
+	var hashToMine string
 
 	// Start the mining goroutine
 	go mining(blockToMineChan, minedBlockChan, interruptMiningChan, stopMiningChan)
@@ -54,13 +58,14 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 				}
 
 			case consoleReq := <-consoleChan:
-				if consoleReq == 1 {
+				if consoleReq != "" {
 					if miningState.Active {
 						printToLog("Already Mining!")
 					} else {
+						hashToMine = consoleReq
 						// Start mining the next block based on the inital height
 						currentHeight, _ := requestChainStats()
-						nextBlock, err := buildBlockForMining(currentHeight)
+						nextBlock, err := buildBlockForMining(currentHeight, hashToMine)
 						if err != nil {
 							printToLog(fmt.Sprintf("Failed to build next block: %v", err))
 							continue
@@ -116,7 +121,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					}
 				}
 				if !miningState.isFinding {
-					b, err := buildBlockForMining(maxHeight)
+					b, err := buildBlockForMining(maxHeight, hashToMine)
 					if err != nil {
 						printToLog(fmt.Sprintf("Failed to build next block: %v", err))
 						continue
@@ -190,7 +195,7 @@ func max(heights []int) int {
 }
 
 // buildBlockForMining constructs a new block for mining based on the current height
-func buildBlockForMining(height int) (Block, error) {
+func buildBlockForMining(height int, hashToMine string) (Block, error) {
 	var currentBlock Block
 	if height == 1 {
 		currentBlock = genesisBlock()
@@ -198,7 +203,14 @@ func buildBlockForMining(height int) (Block, error) {
 		currentBlock = requestBlocks([]int{height})[0][0]
 	}
 	prevHash := hashBlock(currentBlock)
-	nextBlock := newBlock(height+1, prevHash, currentBlock.NBits, currentBlock.BodyHash)
+
+	hashToMineBytes, err := hashStringToByte32(hashToMine)
+
+	if err != nil {
+		return Block{}, fmt.Errorf("failed to convert hash to bytes: %v", err)
+	}
+
+	nextBlock := newBlock(height+1, prevHash, currentBlock.NBits, hashToMineBytes)
 	if (height)%2016 == 0 && height != 2016 { // Skip first ever adjustment
 		// Adjust difficulty every 2016 blocks (except genesis)
 		//nextBlock.Difficulty = adjustDifficulty(nextBlock)
@@ -209,4 +221,25 @@ func buildBlockForMining(height int) (Block, error) {
 		nextBlock.NBits = nBits
 	}
 	return nextBlock, nil
+}
+
+func hashStringToByte32(hashStr string) ([32]byte, error) {
+	// Remove any "0x" prefix if present
+	hashStr = strings.TrimPrefix(hashStr, "0x")
+
+	// Decode the hex string into a byte slice
+	hashBytes, err := hex.DecodeString(hashStr)
+	if err != nil {
+		return [32]byte{}, fmt.Errorf("failed to decode hex string: %v", err)
+	}
+
+	// Check if the length is exactly 32 bytes
+	if len(hashBytes) != 32 {
+		return [32]byte{}, fmt.Errorf("hash length must be 32 bytes, got %d", len(hashBytes))
+	}
+
+	// Convert slice to fixed-size array
+	var result [32]byte
+	copy(result[:], hashBytes)
+	return result, nil
 }
