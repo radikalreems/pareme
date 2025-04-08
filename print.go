@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"sync"
@@ -100,4 +101,44 @@ func describeMessage(msg Message) string {
 	// Combine into a readable string with Reference and PayloadSize
 	return fmt.Sprintf("%s for %s (Reference: %d, Payload Size: %d bytes)",
 		kindStr, cmdStr, msg.Reference, msg.PayloadSize)
+}
+
+func describeMessageFrontEnd(msg Message) string {
+	var kindStr, cmdStr, result string
+
+	// Kind: Request or Response
+	switch msg.Kind {
+	case 0:
+		kindStr = "Sent Request"
+	case 1:
+		kindStr = "Received Response"
+	default:
+		kindStr = "Unknown Kind"
+	}
+
+	// Command: Specific action
+	switch msg.Command {
+	case 0:
+		if msg.Kind == 0 {
+			cmdStr = "Ping"
+		} else {
+			cmdStr = "Pong"
+		}
+		result = fmt.Sprintf("%s for %s", kindStr, cmdStr)
+	case 1:
+		cmdStr = "Latest Height"
+		latestHeight := binary.BigEndian.Uint32(msg.Payload)
+		result = fmt.Sprintf("%s for %s. Peers Latest Height: %d", kindStr, cmdStr, latestHeight)
+	case 2:
+		cmdStr = "Block Request"
+		result = fmt.Sprintf("%s for %s", kindStr, cmdStr)
+	case 3:
+		cmdStr = "Block Broadcast"
+		result = fmt.Sprintf("%s for %s", kindStr, cmdStr)
+	default:
+		cmdStr = "Unknown Command"
+	}
+
+	// Combine into a readable string with Reference and PayloadSize
+	return result
 }

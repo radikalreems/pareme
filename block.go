@@ -21,7 +21,7 @@ type Block struct { // FIELDS: 84 BYTES | IN FILE: 4 MAGIC + 84 = 88 BYTES
 }
 
 const (
-	BlockSize int = 84
+	BlockSize int = 84 // Size of a block (not including 4 byte magic when written)
 )
 
 var (
