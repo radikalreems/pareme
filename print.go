@@ -128,7 +128,7 @@ func describeMessageFrontEnd(msg Message) string {
 	case 1:
 		cmdStr = "Latest Height"
 		latestHeight := binary.BigEndian.Uint32(msg.Payload)
-		result = fmt.Sprintf("%s for %s. Peers Latest Height: %d", kindStr, cmdStr, latestHeight)
+		result = fmt.Sprintf("%s for %s. | Latest Height: %d", kindStr, cmdStr, latestHeight)
 	case 2:
 		cmdStr = "Block Request"
 		result = fmt.Sprintf("%s for %s", kindStr, cmdStr)
