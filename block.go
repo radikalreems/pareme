@@ -140,7 +140,7 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, 
 	for i := maxAB(1, blocks[0].Height-11); i < blocks[0].Height; i++ {
 		inFileHeights = append(inFileHeights, i)
 	}
-	response, err := readBlocksFromFile(datFile, dirFile, offFile, inFileHeights)
+	response, err := readBlocks(datFile, dirFile, offFile, inFileHeights)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to fetch inFileBlocks")
 	}
@@ -222,8 +222,8 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, 
 		}
 
 		median := medianTimestamp(timestamps)
-		if b.Block.Timestamp <= median {
-			printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d", b.Block.Height))
+		if b.Block.Timestamp < median { // Make this "<=" for final version to limit stagnation
+			printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d | timestamp is %v | median is %v", b.Block.Height, b.Block.Timestamp, median))
 			failed = append(failed, b.Block)
 			continue
 		}
@@ -231,7 +231,7 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, 
 		// Timestamp check 2: < now + 2 minutes
 		maxTime := time.Now().UnixMilli() + 120000
 		if b.Block.Timestamp > maxTime {
-			printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d", b.Block.Height))
+			printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d | timestamp is %v | maxTime is %v", b.Block.Height, b.Block.Timestamp, maxTime))
 			failed = append(failed, b.Block)
 			continue
 		}

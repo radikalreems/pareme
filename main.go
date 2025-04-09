@@ -7,10 +7,16 @@ import (
 	"time"
 )
 
+type writeBlockRequest struct {
+	Blocks []Block // Blocks to be written
+	Type   string  // "sync" | "mined" | "received"
+	From   *Peer   // If received, from where
+}
+
 // Global channels for communication between components
-var blockChan = make(chan []Block, 100)             // Send a Block to have it verified and written to file
-var requestChan = make(chan readRequest)            // Send a readRequest to retrieve a specific block
-var indexRequestChan = make(chan chan [2]uint32, 1) // Send a channel to receive index info in it
+var writeBlockChan = make(chan writeBlockRequest, 100) // Send a Block to have it verified and written to file
+var requestChan = make(chan readRequest)               // Send a readRequest to retrieve a specific block
+var indexRequestChan = make(chan chan [2]uint32, 1)    // Send a channel to receive index info in it
 
 // Initializes and runs the Pareme blockchain node
 func main() {
@@ -36,7 +42,7 @@ func main() {
 	}
 
 	// Chain is valid; start the block writer goroutine
-	newBlockChan, err := blockWriter(ctx, &wg)
+	newHeightsChan, err := blockWriter(ctx, &wg)
 	if err != nil {
 		printToLog(fmt.Sprintf("Blockwriter failed: %v", err))
 		cancel()
@@ -58,7 +64,7 @@ func main() {
 	}
 
 	// Start the miner manager with the current chain height
-	consoleMineChan := minerManager(ctx, &wg, newBlockChan)
+	consoleMineChan := minerManager(ctx, &wg, newHeightsChan)
 
 	runUI(ctx, cancel, &wg, consoleMineChan, dialIPChan)
 

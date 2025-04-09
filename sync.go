@@ -35,7 +35,7 @@ func syncChain() error {
 
 //------------------- DIRECT I/O FUNCTIONS
 
-// syncFiles initializes data files (.dat and .idx)
+// initFiles initializes data files (.dat and .idx)
 func initFiles() error {
 	printToLog("Initializing files")
 	// Ensure blocks directory exists

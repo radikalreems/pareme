@@ -329,7 +329,7 @@ func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *
 					}
 				}
 			} else { // This is a request
-				response := respondToMessage(received)
+				response := respondToMessage(received, peer)
 				sendResp := MessageRequest{
 					Message:         response,
 					MsgResponseChan: nil,

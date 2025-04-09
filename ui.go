@@ -79,7 +79,7 @@ func createPeerControls(peerToggles map[int]*PeerToggle, mutex *sync.Mutex) (*fy
 		selected := false
 		for _, pt := range peerToggles {
 			if pt.toggle.Checked {
-				response := requestAMessage(pt.id, 0, nil)
+				response := requestAMessage(pt.peer, 0, nil)
 				outputText.SetText(outputText.Text + describeMessageFrontEnd(response) + "\n")
 				selected = true
 			}
@@ -101,7 +101,7 @@ func createPeerControls(peerToggles map[int]*PeerToggle, mutex *sync.Mutex) (*fy
 		selected := false
 		for _, pt := range peerToggles {
 			if pt.toggle.Checked {
-				response := requestAMessage(pt.id, 1, nil)
+				response := requestAMessage(pt.peer, 1, nil)
 				outputText.SetText(outputText.Text + describeMessageFrontEnd(response) + "\n")
 				selected = true
 			}
@@ -166,13 +166,10 @@ func updatePeerList(peerToggles map[int]*PeerToggle, mutex *sync.Mutex, containe
 
 	currentPeers := make(map[int]bool)
 	for id := range AllPeers {
-		printToLog(fmt.Sprintf("length of AllPeers: %v", len(AllPeers)))
 		currentPeers[id] = true
 
 		_, exists := peerToggles[id]
-		printToLog(fmt.Sprintf("does id %v exist?: %v", id, exists))
 		if !exists {
-			printToLog("reached3")
 			peer := AllPeers[id]
 			toggle := widget.NewCheck(fmt.Sprintf("Peer %d: %v", id, peer.Address), nil)
 			peerToggles[id] = &PeerToggle{

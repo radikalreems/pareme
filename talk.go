@@ -43,9 +43,9 @@ func syncToPeers() error {
 
 	// Compare local latest height to peers latest height
 	latestHeight, _ := requestChainStats()
-	var peerChoice int             // Which peer to ask
-	for pos, _ := range AllPeers { // Pick random peer
-		peerChoice = pos
+	var peerChoice *Peer            // Which peer to ask
+	for _, peer := range AllPeers { // Pick random peer
+		peerChoice = peer
 		break
 	}
 	heightReqResponse := requestAMessage(peerChoice, 1, nil) // Height | payload: nil
@@ -80,9 +80,9 @@ func syncToPeers() error {
 			binary.BigEndian.PutUint32(heightsPayload[j*4:j*4+4], uint32(value))
 		}
 
-		var peerChoice int             // Which peer to ask
-		for pos, _ := range AllPeers { // Pick random peer
-			peerChoice = pos
+		var peerChoice *Peer            // Which peer to ask
+		for _, peer := range AllPeers { // Pick random peer
+			peerChoice = peer
 			break
 		}
 
@@ -106,14 +106,20 @@ func syncToPeers() error {
 			responseBlocks = append(responseBlocks, byteToBlock(blockByte))
 		}
 
-		blockChan <- responseBlocks
+		writeBlockReq := writeBlockRequest{
+			Blocks: responseBlocks,
+			Type:   "sync",
+			From:   peerChoice,
+		}
+
+		writeBlockChan <- writeBlockReq
 
 	}
 
 	return nil
 }
 
-func broadcastBlock(block Block) {
+func broadcastBlock(block Block, exclusion []*Peer) {
 	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", block.Height))
 
 	// Convert block to a [84]byte
@@ -123,15 +129,28 @@ func broadcastBlock(block Block) {
 	blockByte := bb[:]
 
 	// Send message and wait for response
-	var peerChoice int             // Which peer to ask
-	for pos, _ := range AllPeers { // Send to all peers
-		peerChoice = pos
+	var peerChoice *Peer            // Which peer to ask
+	for _, peer := range AllPeers { // Send to all peers except exclusion
+		var exclude bool
+		for i := range exclusion {
+			if exclusion[i] == nil {
+				continue
+			}
+			if exclusion[i].Address == peer.Address {
+				exclude = true
+				continue
+			}
+		}
+		if exclude {
+			continue
+		}
+		peerChoice = peer
 		response := requestAMessage(peerChoice, 3, blockByte)
 		printToLog(describeMessage(response))
 	}
 }
 
-func respondToMessage(request Message) Message {
+func respondToMessage(request Message, from *Peer) Message {
 	switch request.Command {
 	case 0: // Ping request
 		// No payload, simple pong response
@@ -211,7 +230,14 @@ func respondToMessage(request Message) Message {
 		// Send to writer
 		printToLog(fmt.Sprintf("New block %v. Sending to writer.", block.Height))
 		blockPkg := []Block{block}
-		blockChan <- blockPkg
+
+		writeBlockReq := writeBlockRequest{
+			Blocks: blockPkg,
+			Type:   "received",
+			From:   from,
+		}
+
+		writeBlockChan <- writeBlockReq
 
 		// Return a pong Message to send confirmation
 		return newMessage(1, 0, request.Reference, nil)
@@ -222,7 +248,7 @@ func respondToMessage(request Message) Message {
 	return Message{}
 }
 
-func requestAMessage(peerPos int, command uint8, payload []byte) Message {
+func requestAMessage(peerChoice *Peer, command uint8, payload []byte) Message {
 	msg := newMessage(0, command, nextReferenceNumber, payload)
 	nextReferenceNumber++
 
@@ -232,7 +258,7 @@ func requestAMessage(peerPos int, command uint8, payload []byte) Message {
 		MsgResponseChan: msgChan,
 	}
 
-	AllPeers[peerPos].SendChan <- msgReq
+	peerChoice.SendChan <- msgReq
 	//AllPeers[0].SendChan <- msgReq
 	response := <-msgChan
 
@@ -385,7 +411,7 @@ func syncToPeers() error {
 			blocksToWrite = append(blocksToWrite, bloc...)
 		}
 
-		blockChan <- blocksToWrite
+		writeBlockChan <- blocksToWrite
 	}
 
 	return nil

@@ -16,7 +16,7 @@ var miningState struct {
 	Height    int
 }
 
-func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []int) chan string {
+func minerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan []int) chan string {
 	printToLog("\nInitializing Miner...")
 
 	// Channels for mining coordination
@@ -31,7 +31,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 	// Start the mining goroutine
 	go mining(blockToMineChan, minedBlockChan, interruptMiningChan, stopMiningChan)
 
-	var newBlocks []int // Stores incoming block heights for chain updates
+	var newHeights []int // Stores incoming block heights for chain updates
 
 	wg.Add(1)
 	go func() {
@@ -99,14 +99,17 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 				hash := hashBlock(block)
 				printToLog(fmt.Sprintf("Mined Block %d with Hash: %x | ID: %x", block.Height, hash[:8], hash[30:]))
 				blocks := []Block{block}
-				blockChan <- blocks // Send to writer
+				writeBlockReq := writeBlockRequest{
+					Blocks: blocks,
+					Type:   "mined",
+					From:   nil,
+				}
+				writeBlockChan <- writeBlockReq // Send to writer
 
-				//broadcastBlock(block)
-
-			case blocks := <-newBlockChan:
-				newBlocks = append(newBlocks, blocks...)
-				maxHeight := max(newBlocks)
-				printToLog(fmt.Sprintf("newBlocks: %v", newBlocks))
+			case heights := <-newHeightsChan:
+				newHeights = append(newHeights, heights...)
+				maxHeight := max(newHeights)
+				printToLog(fmt.Sprintf("newHeights: %v", newHeights))
 				if !miningState.Active {
 					continue
 				}
@@ -130,7 +133,7 @@ func minerManager(ctx context.Context, wg *sync.WaitGroup, newBlockChan chan []i
 					miningState.isFinding = true
 					blockToMineChan <- b
 					miningState.Height = maxHeight
-					newBlocks = nil
+					newHeights = nil
 				}
 			}
 		}
