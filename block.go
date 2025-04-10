@@ -54,37 +54,42 @@ func genesisBlock() Block {
 }
 
 // Given a potential block, calculate the expected difficulty target.
-func determineDifficulty(nextBlock Block) ([32]byte, [4]byte, error) {
-	printToLog("Determining Difficulty...")
+func calculateDifficulty(nextBlock Block) ([32]byte, [4]byte, error) {
+	printToLog("Calculating Difficulty...")
 
+	// Get adjustment ratio for difficulty
 	ratio, err := determineRatio(nextBlock)
 	if err != nil {
-		return [32]byte{}, [4]byte{}, fmt.Errorf("failed determining ratio: %v", err)
+		return [32]byte{}, [4]byte{}, fmt.Errorf("ratio calculation failed: %v", err)
 	}
 
-	prevTarget := nBitsToTarget(nextBlock.NBits) // NBits -> Target
+	// Convert previous nBits to target
+	prevTarget := nBitsToTarget(nextBlock.NBits)
 
-	prevBig := new(big.Int).SetBytes(prevTarget[:])                            // Target -> BigInt Target
-	ratioBig := big.NewFloat(ratio)                                            // Ratio -> BigFloat Ratio
-	targetBig := new(big.Float).Mul(big.NewFloat(0).SetInt(prevBig), ratioBig) // BigTarget * BigRatio
-	newTargetInt, _ := targetBig.Int(nil)                                      // BigFloat Target -> BigInt Target
-	newTargetBytes := newTargetInt.Bytes()                                     // BigInt Target -> []byte Target
+	// Perform target adjustment calculation
+	prevInt := new(big.Int).SetBytes(prevTarget[:])
+	ratioFloat := big.NewFloat(ratio)
+	newTargetFloat := new(big.Float).Mul(big.NewFloat(0).SetInt(prevInt), ratioFloat)
+	newTargetInt, _ := newTargetFloat.Int(nil)
+	newTargetBytes := newTargetInt.Bytes()
 
-	// Fit []byte Target into [32]byte
-	newTarget := [32]byte{}
+	// Fit target into 32-byte array
+	var newTarget [32]byte
 	if len(newTargetBytes) > 32 {
-		// length of Target is > 32, truncate to the rightmost
+		// Truncate to rightmost 32 bytes if too large
 		copy(newTarget[:], newTargetBytes[len(newTargetBytes)-32:])
 	} else {
-		// length of Target is <= 32, align by rightmost
+		// Right-align bytes if 32 or fewer
 		copy(newTarget[32-len(newTargetBytes):], newTargetBytes)
 	}
 
+	// Ensure target doesn't exceed maximum
 	if bytes.Compare(newTarget[:], MaxTarget[:]) > 0 {
 		newTarget = MaxTarget
 	}
 
-	nBits := targetToNBits(newTarget) // Target -> NBits
+	// Convert target back to nBits
+	nBits := targetToNBits(newTarget)
 
 	return newTarget, nBits, nil
 
@@ -92,152 +97,141 @@ func determineDifficulty(nextBlock Block) ([32]byte, [4]byte, error) {
 
 // Complete verfication steps against given blocks
 func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []Block) ([]Block, []Block, []Block, error) {
+	var verified, failed, orphaned []Block
 
-	var verified []Block
-	var failed []Block
-	var orphaned []Block
-
-	// Check for genesis
+	// Handle genesis block case
 	if len(blocks) == 1 && blocks[0].Height == 1 {
 		genesis := genesisBlock()
-		genesisHash := hashBlock(genesis)
-		blockHash := hashBlock(blocks[0])
-		if genesisHash != blockHash {
+		if hashBlock(genesis) != hashBlock(blocks[0]) {
 			printToLog("Block 1 failed verification: genesis block check")
 			failed = append(failed, blocks[0])
-
 		} else {
 			verified = append(verified, blocks[0])
 		}
 		return verified, failed, orphaned, nil
 	}
 
+	// Sort blocks by height, ascending
 	sort.Slice(blocks, func(i, j int) bool {
 		return blocks[i].Height < blocks[j].Height
 	})
 
-	// Check if it is continuous
+	// Batched verification requires continuous heights. Check continuity here
 	if len(blocks) > 1 {
 		for i := 1; i < len(blocks); i++ {
-			prevHeight := blocks[i-1].Height
-			currHeight := blocks[i].Height
-			if currHeight != prevHeight && currHeight != prevHeight+1 {
-				return nil, nil, nil, fmt.Errorf("block slice is not continuous, cannot verifiy")
+			if blocks[i].Height == blocks[i-1].Height {
+				continue
+			}
+			if blocks[i].Height != blocks[i-1].Height+1 {
+				return nil, nil, nil, fmt.Errorf("discontinuous blocks, cannot verify")
 			}
 		}
 	}
 
-	// If we can't get the last 11 blocks (due to being at the start of the chain) record the amount missing
-	var cutoffAmt int
+	// Calculate cutoff for initial chain blocks
+	cutoff := 0
 	if maxAB(1, blocks[0].Height-11) == 1 {
-		cutoffAmt = 1 - (blocks[0].Height - 11)
-	} else {
-		cutoffAmt = 0
+		cutoff = 1 - (blocks[0].Height - 11)
 	}
 
-	// Fetch the last 11 blocks from chain
-	var inFileHeights []int
-	for i := maxAB(1, blocks[0].Height-11); i < blocks[0].Height; i++ {
-		inFileHeights = append(inFileHeights, i)
+	// Fetch last 11 blocks from chain
+	fileHeights := make([]int, 0, 11-cutoff)
+	for i := maxAB(1, blocks[0].Height-11); i < blocks[0].Height; i++ { // Gather heights
+		fileHeights = append(fileHeights, i)
 	}
-	response, err := readBlocks(datFile, dirFile, offFile, inFileHeights)
+	fileBlocksResp, err := readBlocks(datFile, dirFile, offFile, fileHeights) // Read blocks from file
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to fetch inFileBlocks")
 	}
-	var inFileBlocks []Block
-	for _, group := range response {
-		inFileBlocks = append(inFileBlocks, group...)
+	var fileBlocks []Block
+	for _, group := range fileBlocksResp {
+		fileBlocks = append(fileBlocks, group...) // flatten the response
 	}
 
-	type pendBlock struct {
-		Block    Block
-		Verified bool
-		Original bool
-		Hash     [32]byte
+	// Prepare blocks for verification
+	type pendingBlock struct {
+		block    Block
+		verified bool
+		original bool
+		hash     [32]byte
 	}
 
-	var pendingBlocks []pendBlock
-
-	for _, b := range inFileBlocks {
-		bloc := pendBlock{Block: b, Verified: true, Original: true, Hash: hashBlock(b)}
-		pendingBlocks = append(pendingBlocks, bloc)
+	pending := make([]pendingBlock, 0, len(fileBlocks)+len(blocks))
+	for _, b := range fileBlocks {
+		pending = append(pending, pendingBlock{block: b, verified: true, original: true, hash: hashBlock(b)})
 	}
 	for _, b := range blocks {
-		bloc := pendBlock{Block: b, Verified: false, Original: false, Hash: hashBlock(b)}
-		pendingBlocks = append(pendingBlocks, bloc)
+		pending = append(pending, pendingBlock{block: b, verified: false, original: false, hash: hashBlock(b)})
 	}
 
-	for i, b := range pendingBlocks {
-		if b.Original {
+	// Verify each non-original block
+	for i, pb := range pending {
+		if pb.original { // Skip originals
 			continue
 		}
 
 		// Difficulty check
-		blockHash := hashBlock(b.Block)
-		blockDifficulty := nBitsToTarget(b.Block.NBits)
-		diffVerified := bytes.Compare(blockHash[:], blockDifficulty[:]) < 0
-		if !diffVerified {
-			printToLog(fmt.Sprintf("failed verification: difficulty check at block %d", b.Block.Height))
-			failed = append(failed, b.Block)
+		target := nBitsToTarget(pb.block.NBits)
+		if bytes.Compare(pb.hash[:], target[:]) >= 0 {
+			printToLog(fmt.Sprintf("block %d failed difficulty check", pb.block.Height))
+			failed = append(failed, pb.block)
 			continue
 		}
 
 		// PrevHash & Height Check
-		var prevBlock []pendBlock
-		for _, prevBloc := range pendingBlocks {
-			if prevBloc.Verified && prevBloc.Hash == b.Block.PrevHash {
-				prevBlock = append(prevBlock, prevBloc)
+		var prevBlock pendingBlock
+		for _, candidate := range pending {
+			if candidate.verified && candidate.hash == pb.block.PrevHash {
+				prevBlock = candidate
 				break
 			}
 		}
-		if len(prevBlock) == 0 {
-			printToLog(fmt.Sprintf("failed verification: orphan at block %d", b.Block.Height))
-			orphaned = append(orphaned, b.Block)
+		var zero pendingBlock
+		if prevBlock == zero {
+			printToLog(fmt.Sprintf("block %d is orphaned", pb.block.Height))
+			orphaned = append(orphaned, pb.block)
 			continue
 		}
-		if prevBlock[0].Block.Height+1 != b.Block.Height {
-			printToLog(fmt.Sprintf("failed verification: height check at block %d", b.Block.Height))
-			failed = append(failed, b.Block)
+		if prevBlock.block.Height+1 != pb.block.Height {
+			printToLog(fmt.Sprintf("block %d failed height check", pb.block.Height))
+			failed = append(failed, pb.block)
 			continue
 		}
 
-		// Timestamp check 1: > median of last 11 blocks (minus cutoff if we are at the start of the chain)
-		var timestamps []int64
-		referenceBlock := b.Block
-		for {
-			if len(timestamps) == (11 - cutoffAmt) {
-				break
-			}
+		// Timestamp check 1: check against median of last 11 blocks
+		timestamps := make([]int64, 0, 11-cutoff)
+		refBlock := pb.block
+		for len(timestamps) < 11-cutoff {
 			found := false
-			for _, prevBloc := range pendingBlocks {
-				if prevBloc.Verified && prevBloc.Hash == referenceBlock.PrevHash {
+			for _, prev := range pending {
+				if prev.verified && prev.hash == refBlock.PrevHash {
+					timestamps = append(timestamps, prev.block.Timestamp)
+					refBlock = prev.block
 					found = true
-					timestamps = append(timestamps, prevBloc.Block.Timestamp)
-					referenceBlock = prevBloc.Block
+					break
 				}
 			}
 			if !found {
-				return nil, nil, nil, fmt.Errorf("failed to located prevHash chain for block %d at reference block %d", b.Block.Height, referenceBlock.Height)
+				return nil, nil, nil, fmt.Errorf("failed to locate prevHash chain for block %d at reference block %d",
+					pb.block.Height, refBlock.Height)
 			}
 		}
-
-		median := medianTimestamp(timestamps)
-		if b.Block.Timestamp < median { // Make this "<=" for final version to limit stagnation
-			printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d | timestamp is %v | median is %v", b.Block.Height, b.Block.Timestamp, median))
-			failed = append(failed, b.Block)
+		if pb.block.Timestamp < medianTimestamp(timestamps) { // Make this "<=" for final version to limit stagnation
+			printToLog(fmt.Sprintf("failed verification: timestamp check #1 at block %d | timestamp is %v | median is %v", pb.block.Height, pb.block.Timestamp, medianTimestamp(timestamps)))
+			failed = append(failed, pb.block)
 			continue
 		}
 
 		// Timestamp check 2: < now + 2 minutes
 		maxTime := time.Now().UnixMilli() + 120000
-		if b.Block.Timestamp > maxTime {
-			printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d | timestamp is %v | maxTime is %v", b.Block.Height, b.Block.Timestamp, maxTime))
-			failed = append(failed, b.Block)
+		if pb.block.Timestamp > maxTime {
+			printToLog(fmt.Sprintf("failed verification: timestamp check #2 at block %d | timestamp is %v | maxTime is %v", pb.block.Height, pb.block.Timestamp, maxTime))
+			failed = append(failed, pb.block)
 			continue
 		}
 
-		verified = append(verified, b.Block)
-		pendingBlocks[i].Verified = true
+		verified = append(verified, pb.block)
+		pending[i].verified = true
 
 	}
 

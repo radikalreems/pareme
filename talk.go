@@ -49,7 +49,6 @@ func syncToPeers() error {
 		break
 	}
 	heightReqResponse := requestAMessage(peerChoice, 1, nil) // Height | payload: nil
-	printToLog(describeMessage(heightReqResponse))
 	latestHeightFromPeer := int(binary.BigEndian.Uint32(heightReqResponse.Payload))
 	difference := latestHeightFromPeer - latestHeight
 	if difference < 10 {
@@ -120,7 +119,6 @@ func syncToPeers() error {
 }
 
 func broadcastBlock(block Block, exclusion []*Peer) {
-	printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", block.Height))
 
 	// Convert block to a [84]byte
 	bb := blockToByte(block)
@@ -144,6 +142,7 @@ func broadcastBlock(block Block, exclusion []*Peer) {
 		if exclude {
 			continue
 		}
+		printToLog(fmt.Sprintf("Broadcasting Block %d to Pareme....", block.Height))
 		peerChoice = peer
 		response := requestAMessage(peerChoice, 3, blockByte)
 		printToLog(describeMessage(response))

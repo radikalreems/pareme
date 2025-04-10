@@ -158,25 +158,20 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 		printToLog(fmt.Sprintf("Wrote Block %d to file. Timestamp: %v secs.", block.Height, block.Timestamp/1000))
 	}
 
-	err := updateIndexFiles(datFile, dirFile, offFile, blocks)
-	if err != nil {
-		printToLog(fmt.Sprintf("failed to update index: %v", err))
-	}
-
-	/*
-		if len(blocks) == 1 && blocks[0].Height != 1 {
-			err := updateIndexFiles(datFile, dirFile, offFile, blocks)
-			if err != nil {
-				printToLog(fmt.Sprintf("failed to update index: %v", err))
-			}
-		} else if len(blocks) > 1 || blocks[0].Height == 1 {
-			// Init DIR & OFF files based on DAT
-			err := initializeIndexFiles(datFile, dirFile, offFile)
-			if err != nil {
-				return fmt.Errorf("failed to init index files: %v", err)
-			}
+	if blocks[0].Height == 1 {
+		if len(blocks) != 1 {
+			return fmt.Errorf("error: multiple blocks sent with genesis")
 		}
-	*/
+		err := initializeIndexFiles(datFile, dirFile, offFile)
+		if err != nil {
+			return fmt.Errorf("failed to init index files: %v", err)
+		}
+	} else {
+		err := updateIndexFiles(datFile, dirFile, offFile, blocks)
+		if err != nil {
+			printToLog(fmt.Sprintf("failed to update index: %v", err))
+		}
+	}
 	return nil
 }
 
@@ -184,15 +179,17 @@ func writeBlocks(datFile, dirFile, offFile *os.File, blocks []Block) error {
 func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlocks []Block) error {
 	//printToLog(fmt.Sprintf("\nUpdating index files after block %d was written", newBlock.Height))
 
-	for _, newBlock := range newBlocks {
+	// Calculate the new block's offset
+	datStat, err := datFile.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat DAT file: %v", err)
+	}
+	numBlocks := datStat.Size() / (int64(BlockSize) + 4)                 // Total number of blocks in DAT
+	startOffsetOfNewBlocks := uint32(numBlocks) - uint32(len(newBlocks)) // Offset where the new blocks batch started
 
-		// Calculate the new block's offset
-		datStat, err := datFile.Stat()
-		if err != nil {
-			return fmt.Errorf("failed to stat DAT file: %v", err)
-		}
-		numBlocks := datStat.Size() / (int64(BlockSize) + 4) // Total number of blocks in DAT
-		newOffset := uint32(numBlocks - 1)                   // Offset the new block was written at
+	for i, newBlock := range newBlocks {
+
+		newOffset := startOffsetOfNewBlocks + uint32(i) // Offset the new block was written at
 
 		// Check if directory has the height we want
 		dirIndex := (newBlock.Height - 1) * 4 // The directory index to read given blocks height
@@ -343,31 +340,30 @@ func updateIndexFiles(datFile, directoryFile, offsetFile *os.File, newBlocks []B
 				}
 			}
 		}
-
-		datSlice, _, _, err := displayIndexFiles(datFile, directoryFile, offsetFile)
-		if err != nil {
-			return fmt.Errorf("failed to display index files: %v", err)
-		}
-		// Print updated chain stats but limit to last 8
-		if len(datSlice) < 9 {
-			printToLog(fmt.Sprintf("Dat file: %v", datSlice))
-		} else {
-			printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
-		}
-
-		/*
-			if len(dirSlice) < 9 {
-				printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
-			} else {
-				printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
-			}
-			if len(offSlice) < 9 {
-				printToLog(fmt.Sprintf("Offset file: %v", offSlice))
-			} else {
-				printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
-			}
-		*/
 	}
+	datSlice, _, _, err := displayIndexFiles(datFile, directoryFile, offsetFile)
+	if err != nil {
+		return fmt.Errorf("failed to display index files: %v", err)
+	}
+	// Print updated chain stats but limit to last 8
+	if len(datSlice) < 9 {
+		printToLog(fmt.Sprintf("Dat file: %v", datSlice))
+	} else {
+		printToLog(fmt.Sprintf("Dat file: %v", datSlice[len(datSlice)-8:]))
+	}
+
+	/*
+		if len(dirSlice) < 9 {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice))
+		} else {
+			printToLog(fmt.Sprintf("Directory file: %v", dirSlice[len(dirSlice)-8:]))
+		}
+		if len(offSlice) < 9 {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice))
+		} else {
+			printToLog(fmt.Sprintf("Offset file: %v", offSlice[len(offSlice)-8:]))
+		}
+	*/
 	return nil
 }
 

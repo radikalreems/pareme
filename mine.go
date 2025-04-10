@@ -217,7 +217,7 @@ func buildBlockForMining(height int, hashToMine string) (Block, error) {
 	if (height)%2016 == 0 && height != 2016 { // Skip first ever adjustment
 		// Adjust difficulty every 2016 blocks (except genesis)
 		//nextBlock.Difficulty = adjustDifficulty(nextBlock)
-		_, nBits, err := determineDifficulty(nextBlock)
+		_, nBits, err := calculateDifficulty(nextBlock)
 		if err != nil {
 			return Block{}, fmt.Errorf("failed to determine difficulty: %v", err)
 		}
