@@ -1,10 +1,11 @@
-package main
+package common
 
 import (
 	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -12,18 +13,25 @@ import (
 // printChan buffers log messages to be written to the log file
 var printChan chan string
 
+const (
+	logDir  = "common"
+	logFile = "pareme.log"
+)
+
 // initPrinter starts a goroutine to handle logging to pareme.log
-func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
-	printToLog("\nStarting up printer...")
+func InitPrinter(ctx context.Context, wg *sync.WaitGroup) {
+	PrintToLog("\nStarting up printer...")
+	logPath := filepath.Join(logDir, logFile)
+
 	// Truncate existing log file if it exists
-	if _, err := os.Stat("pareme.log"); err == nil {
-		if err := os.Truncate("pareme.log", 0); err != nil {
+	if _, err := os.Stat(logPath); err == nil {
+		if err := os.Truncate(logPath, 0); err != nil {
 			panic("Failed to truncate pareme.log" + err.Error())
 		}
 	}
 
 	// Open log file in append mode
-	f, err := os.OpenFile("pareme.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic("failed to open pareme.log: " + err.Error())
 	}
@@ -42,7 +50,7 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 			case msg := <-printChan:
 				// Write log message to file
 				if _, err := f.WriteString(msg + "\n"); err != nil {
-					continue // Skip failed writes silently
+					continue
 				}
 			case <-ctx.Done():
 				// Drain remaining messages before shutdown
@@ -60,14 +68,14 @@ func initPrinter(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // printToLog sends a message to the log file via the print channel
-func printToLog(s string) {
+func PrintToLog(s string) {
 	select {
 	case printChan <- s: // Send message to printer
 	case <-time.After(1 * time.Second): // Drop message if channel is full after 1s
 	}
 }
 
-func describeMessage(msg Message) string {
+func DescribeMessage(msg Message) string {
 	var kindStr, cmdStr string
 
 	// Kind: Request or Response
@@ -103,7 +111,7 @@ func describeMessage(msg Message) string {
 		kindStr, cmdStr, msg.Reference, msg.PayloadSize)
 }
 
-func describeMessageFrontEnd(msg Message) string {
+func DescribeMessageFrontEnd(msg Message) string {
 	var kindStr, cmdStr, result string
 
 	// Kind: Request or Response

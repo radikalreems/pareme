@@ -1,8 +1,10 @@
-package main
+package ui
 
 import (
 	"context"
 	"fmt"
+	"pareme/common"
+	"pareme/network"
 	"sync"
 	"time"
 
@@ -15,33 +17,85 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// PeerToggle defines the structure for a peer selection checkbox in the UI
-type PeerToggle struct {
+// peerToggle defines the structure for a peer selection checkbox in the UI
+type peerToggle struct {
 	toggle *widget.Check
 	id     int
-	peer   *Peer
+	peer   *common.Peer
 }
 
 // Global outputText displays log messages in the UI
 var outputText *widget.Label
 
-// newSpacer creates a separator for UI grouping
-func newSpacer() *fyne.Container {
-	return container.NewVBox(
-		widget.NewLabel(""),
-		widget.NewSeparator(),
-		widget.NewLabel(""),
+// runUI initializes and runs the main UI window with all components
+func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan string, dialIPChan chan string) {
+	// Create Fyne UI
+	a := app.New()
+	w := a.NewWindow("Pareme Blockchain Node")
+	w.Resize(fyne.NewSize(600, 400))
+
+	// Create Output Text field for logging
+	outputText = widget.NewLabel("Pareme Node Started\n")
+	outputText.Wrapping = fyne.TextWrapWord
+
+	var peerToggles = make(map[int]*peerToggle)
+	var peerTogglesMutex sync.Mutex
+	networkGroup := createNetworkGroup(dialIPChan)
+	miningGroup := createMiningGroup(consoleMineChan)
+
+	peerControls, peerListContainer, pingButton, heightButton := createPeerControls(peerToggles, &peerTogglesMutex)
+	networkGroup.Add(peerControls)
+
+	// Start peer list updater
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				updatePeerList(peerToggles, &peerTogglesMutex, peerListContainer, pingButton, heightButton)
+			}
+		}
+	}()
+
+	// Button to stop node and quit
+	stopButton := widget.NewButton("Stop Node", func() {
+		common.PrintToLog("Recieved 'stop' command")
+		cancel()
+		wg.Wait()
+		outputText.SetText(outputText.Text + "Node stopped\n")
+		a.Quit()
+	})
+	stopButton.Importance = widget.WarningImportance
+
+	// --------UI OVERLAY--------
+	outputScroll := container.NewScroll(outputText)
+	outputScroll.SetMinSize(fyne.NewSize(0, 200))
+
+	// Main title
+	mainTitle := createTitleLabel("Pareme Blockchain Node")
+	mainTitle.TextSize = 24
+
+	// UI overlay
+	content := container.NewVBox(
+		container.NewPadded(mainTitle),
+		networkGroup,
+		newSpacer(),
+		miningGroup,
+		newSpacer(),
+		stopButton,
+		outputScroll,
 	)
+
+	// Run UI
+	w.SetContent(content)
+	updatePeerList(peerToggles, &peerTogglesMutex, peerListContainer, pingButton, heightButton)
+	w.ShowAndRun()
 }
 
-func createTitleLabel(text string) *canvas.Text {
-	title := canvas.NewText(text, theme.ForegroundColor())
-	title.TextSize = 18
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
-	return title
-}
-
+// --------- Groups
 // createNetworkGroup builds the network control section
 func createNetworkGroup(dialIPChan chan string) *fyne.Container {
 	// IP entry field
@@ -51,7 +105,7 @@ func createNetworkGroup(dialIPChan chan string) *fyne.Container {
 	// Button to connect to given IP
 	connectButton := widget.NewButton("Connect", func() {
 		if ip := ipEntry.Text; ip != "" {
-			printToLog(fmt.Sprintf("Connecting to IP: %s", ip))
+			common.PrintToLog(fmt.Sprintf("Connecting to IP: %s", ip))
 			dialIPChan <- ip
 			outputText.SetText(outputText.Text + fmt.Sprintf("Connecting to %s\n", ip))
 		}
@@ -67,20 +121,20 @@ func createNetworkGroup(dialIPChan chan string) *fyne.Container {
 }
 
 // createPeerControls constructs the peer interaction section
-func createPeerControls(peerToggles map[int]*PeerToggle, mutex *sync.Mutex) (*fyne.Container, *fyne.Container, *widget.Button, *widget.Button) {
+func createPeerControls(peerToggles map[int]*peerToggle, mutex *sync.Mutex) (*fyne.Container, *fyne.Container, *widget.Button, *widget.Button) {
 	peerListContainer := container.NewVBox()
 
 	// Ping button to send a ping to selected peer
 	pingButton := widget.NewButton("Ping", func() {
-		printToLog("Received 'ping' command")
+		common.PrintToLog("Received 'ping' command")
 		mutex.Lock()
 		defer mutex.Unlock()
 
 		selected := false
 		for _, pt := range peerToggles {
 			if pt.toggle.Checked {
-				response := requestAMessage(pt.peer, 0, nil)
-				outputText.SetText(outputText.Text + describeMessageFrontEnd(response) + "\n")
+				response := network.RequestMessage(pt.peer, 0, nil)
+				outputText.SetText(outputText.Text + common.DescribeMessageFrontEnd(response) + "\n")
 				selected = true
 			}
 		}
@@ -94,15 +148,15 @@ func createPeerControls(peerToggles map[int]*PeerToggle, mutex *sync.Mutex) (*fy
 
 	// Height button to request latest height from selected peer
 	heightButton := widget.NewButton("Get Latest Height", func() {
-		printToLog("Received 'height' command")
+		common.PrintToLog("Received 'height' command")
 		mutex.Lock()
 		defer mutex.Unlock()
 
 		selected := false
 		for _, pt := range peerToggles {
 			if pt.toggle.Checked {
-				response := requestAMessage(pt.peer, 1, nil)
-				outputText.SetText(outputText.Text + describeMessageFrontEnd(response) + "\n")
+				response := network.RequestMessage(pt.peer, 1, nil)
+				outputText.SetText(outputText.Text + common.DescribeMessageFrontEnd(response) + "\n")
 				selected = true
 			}
 		}
@@ -134,7 +188,7 @@ func createMiningGroup(consoleMineChan chan string) *fyne.Container {
 
 	// Button to start mining with given hash
 	startMineButton := widget.NewButton("Start Mining", func() {
-		printToLog("Recieved 'start mine' command")
+		common.PrintToLog("Recieved 'start mine' command")
 		hash := hashEntry.Text
 		consoleMineChan <- hash
 		outputText.SetText(outputText.Text + "Mining started\n")
@@ -143,7 +197,7 @@ func createMiningGroup(consoleMineChan chan string) *fyne.Container {
 
 	// Button to stop mining
 	stopMineButton := widget.NewButton("Stop Mining", func() {
-		printToLog("Recieved 'stop mine' command")
+		common.PrintToLog("Recieved 'stop mine' command")
 		consoleMineChan <- ""
 		outputText.SetText(outputText.Text + "Mining stopped\n")
 	})
@@ -160,19 +214,19 @@ func createMiningGroup(consoleMineChan chan string) *fyne.Container {
 }
 
 // updatePeerList synchronizes the UI peer list with the current set of connected peers
-func updatePeerList(peerToggles map[int]*PeerToggle, mutex *sync.Mutex, container *fyne.Container, pingButton *widget.Button, heightButton *widget.Button) {
+func updatePeerList(peerToggles map[int]*peerToggle, mutex *sync.Mutex, container *fyne.Container, pingButton *widget.Button, heightButton *widget.Button) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	currentPeers := make(map[int]bool)
-	for id := range AllPeers {
+	for id := range common.AllPeers {
 		currentPeers[id] = true
 
 		_, exists := peerToggles[id]
 		if !exists {
-			peer := AllPeers[id]
+			peer := common.AllPeers[id]
 			toggle := widget.NewCheck(fmt.Sprintf("Peer %d: %v", id, peer.Address), nil)
-			peerToggles[id] = &PeerToggle{
+			peerToggles[id] = &peerToggle{
 				toggle: toggle,
 				id:     id,
 				peer:   peer,
@@ -190,7 +244,7 @@ func updatePeerList(peerToggles map[int]*PeerToggle, mutex *sync.Mutex, containe
 	container.Refresh()
 
 	// Enable or disable buttons based on peer count
-	if len(AllPeers) > 0 {
+	if len(common.AllPeers) > 0 {
 		pingButton.Enable()
 		heightButton.Enable()
 	} else {
@@ -199,70 +253,21 @@ func updatePeerList(peerToggles map[int]*PeerToggle, mutex *sync.Mutex, containe
 	}
 }
 
-// runUI initializes and runs the main UI window with all components
-func runUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan string, dialIPChan chan string) {
-	// Create Fyne UI
-	a := app.New()
-	w := a.NewWindow("Pareme Blockchain Node")
-	w.Resize(fyne.NewSize(600, 400))
-
-	// Create Output Text field for logging
-	outputText = widget.NewLabel("Pareme Node Started\n")
-	outputText.Wrapping = fyne.TextWrapWord
-
-	var peerToggles = make(map[int]*PeerToggle)
-	var peerTogglesMutex sync.Mutex
-	networkGroup := createNetworkGroup(dialIPChan)
-	miningGroup := createMiningGroup(consoleMineChan)
-
-	peerControls, peerListContainer, pingButton, heightButton := createPeerControls(peerToggles, &peerTogglesMutex)
-	networkGroup.Add(peerControls)
-
-	// Start peer list updater
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				updatePeerList(peerToggles, &peerTogglesMutex, peerListContainer, pingButton, heightButton)
-			}
-		}
-	}()
-
-	// Button to stop node and quit
-	stopButton := widget.NewButton("Stop Node", func() {
-		printToLog("Recieved 'stop' command")
-		cancel()
-		wg.Wait()
-		outputText.SetText(outputText.Text + "Node stopped\n")
-		a.Quit()
-	})
-	stopButton.Importance = widget.WarningImportance
-
-	// --------UI OVERLAY--------
-	outputScroll := container.NewScroll(outputText)
-	outputScroll.SetMinSize(fyne.NewSize(0, 200))
-
-	// Main title
-	mainTitle := createTitleLabel("Pareme Blockchain Node")
-	mainTitle.TextSize = 24
-
-	// UI overlay
-	content := container.NewVBox(
-		container.NewPadded(mainTitle),
-		networkGroup,
-		newSpacer(),
-		miningGroup,
-		newSpacer(),
-		stopButton,
-		outputScroll,
+// -------- Visuals
+// newSpacer creates a separator for UI grouping
+func newSpacer() *fyne.Container {
+	return container.NewVBox(
+		widget.NewLabel(""),
+		widget.NewSeparator(),
+		widget.NewLabel(""),
 	)
+}
 
-	// Run UI
-	w.SetContent(content)
-	updatePeerList(peerToggles, &peerTogglesMutex, peerListContainer, pingButton, heightButton)
-	w.ShowAndRun()
+// createTitleLabel creates a stylized title label
+func createTitleLabel(text string) *canvas.Text {
+	title := canvas.NewText(text, theme.ForegroundColor())
+	title.TextSize = 18
+	title.TextStyle = fyne.TextStyle{Bold: true}
+	title.Alignment = fyne.TextAlignCenter
+	return title
 }

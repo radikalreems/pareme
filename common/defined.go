@@ -1,0 +1,83 @@
+package common
+
+import (
+	"context"
+	"net"
+	"time"
+)
+
+const (
+	BlockSize = 84 // Size of a block (not including 4 byte magic when written)
+	MaxNonce  = 1_000_000_000
+)
+
+var (
+	WriteBlockChan   = make(chan WriteBlockRequest, 100) // Send a Block to have it verified and written to file
+	RequestChan      = make(chan ReadRequest)            // Send a readRequest to retrieve a specific block
+	IndexRequestChan = make(chan chan [2]uint32, 1)      // Send a channel to receive index info in it
+)
+
+var (
+	MaxTarget = [32]byte{0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	MaxTargetNBits = TargetToNBits(MaxTarget)
+)
+
+var MiningState struct {
+	Active    bool
+	IsFinding bool
+	Height    int
+}
+
+type Block struct { // FIELDS: 84 BYTES | IN FILE: 4 MAGIC + 84 = 88 BYTES
+	Height    int      // 4 bytes
+	Timestamp int64    // 8 bytes
+	PrevHash  [32]byte // 32 bytes
+	NBits     [4]byte  // 4 bytes
+	Nonce     int      // 4 bytes
+	BodyHash  [32]byte // 32 bytes
+}
+
+type WriteBlockRequest struct {
+	Blocks []Block // Blocks to be written
+	Type   string  // "sync" | "mined" | "received"
+	From   *Peer   // If received, from where
+}
+
+// Message represents the structure of a blockchain network message
+type Message struct {
+	Size        uint16 // Total message length in bytes (2 bytes)
+	Kind        uint8  // Message type: 0 for request, 1 for Response (1 byte)
+	Command     uint8  // Specific action (e.g., for requests: 1=latest height, 2=block request) (1 byte)
+	Reference   uint16 // Unique ID set by requester, echoed in response (2 bytes)
+	PayloadSize uint16 // Length of the payload data in bytes (2 bytes)
+	Payload     []byte // Variable-length data (e.g., heights, blocks)
+}
+
+// MessageRequest pairs a message with a channel to reveive its response
+type MessageRequest struct {
+	Message      Message      // The request message
+	ResponseChan chan Message // Channel to receive the corresponding response
+}
+
+var AllPeers map[int]*Peer = make(map[int]*Peer)
+
+// Peer represents a network peer with its connection details and status
+type Peer struct {
+	Address    string              // Network address of the peer
+	Port       string              // Port number for the peer
+	Conn       net.Conn            // Active network connection to the peer
+	Context    context.Context     // Context for managing peer lifecycle
+	Status     int                 // Connection status (e.g., StatusConnecting, StatusActive)
+	IsOutbound bool                // True if this is an outbound connection
+	Version    int                 // Protocol version of the peer
+	LastSeen   time.Time           // Last time the peer was active
+	ID         int                 // Unique identifier for the peer
+	SendChan   chan MessageRequest // Channel for sending message requests
+}
+
+// readRequest represents a request to read a block by height
+type ReadRequest struct {
+	Heights  []int
+	Response chan [][]Block
+}

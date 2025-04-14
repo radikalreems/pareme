@@ -3,20 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"pareme/common"
+	"pareme/io"
+	"pareme/mine"
+	"pareme/network"
+	"pareme/ui"
 	"sync"
-	"time"
 )
-
-type writeBlockRequest struct {
-	Blocks []Block // Blocks to be written
-	Type   string  // "sync" | "mined" | "received"
-	From   *Peer   // If received, from where
-}
-
-// Global channels for communication between components
-var writeBlockChan = make(chan writeBlockRequest, 100) // Send a Block to have it verified and written to file
-var requestChan = make(chan readRequest)               // Send a readRequest to retrieve a specific block
-var indexRequestChan = make(chan chan [2]uint32, 1)    // Send a channel to receive index info in it
 
 // Initializes and runs the Pareme blockchain node
 func main() {
@@ -27,45 +20,47 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Initialize the printer for logging to .log file
-	initPrinter(ctx, &wg)
+	common.InitPrinter(ctx, &wg)
 
 	// Start the networking goroutine
-	dialIPChan := networkManager(ctx, &wg)
+	dialIPChan := network.NetworkManager(ctx, &wg)
 
 	// Sync chain data from own files
-	err := syncChain()
+	err := io.SyncChain()
 	if err != nil {
-		printToLog(fmt.Sprintf("Sync failed: %v", err))
+		common.PrintToLog(fmt.Sprintf("Sync failed: %v", err))
 		cancel()
 		wg.Wait()
 		return
 	}
 
 	// Chain is valid; start the block writer goroutine
-	newHeightsChan, err := blockWriter(ctx, &wg)
+	newHeightsChan, err := io.BlockWriter(ctx, &wg)
 	if err != nil {
-		printToLog(fmt.Sprintf("Blockwriter failed: %v", err))
+		common.PrintToLog(fmt.Sprintf("Blockwriter failed: %v", err))
 		cancel()
 		wg.Wait()
 		return
 	}
 
-	// Connect to a peer
-	dialIPChan <- "192.168.86.98"
-	time.Sleep(2 * time.Second)
+	/*
+		// Connect to a peer
+		dialIPChan <- "192.168.86.98"
+		time.Sleep(2 * time.Second)
 
-	// Sync chain data from peers
-	err = syncToPeers()
-	if err != nil {
-		printToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
-		cancel()
-		wg.Wait()
-		return
-	}
+		// Sync chain data from peers
+		err = SyncToPeers()
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+			cancel()
+			wg.Wait()
+			return
+		}
+	*/
 
 	// Start the miner manager with the current chain height
-	consoleMineChan := minerManager(ctx, &wg, newHeightsChan)
+	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
 
-	runUI(ctx, cancel, &wg, consoleMineChan, dialIPChan)
+	ui.RunUI(ctx, cancel, &wg, consoleMineChan, dialIPChan)
 
 }
