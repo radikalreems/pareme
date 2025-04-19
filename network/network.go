@@ -15,20 +15,22 @@ const (
 	StatusDisconnect     = 0                // Peer status: disconnected
 	StatusConnecting     = 1                // Peer status: connecting
 	StatusActive         = 2                // Peer status: active
-	MaxPeers             = 10               // Maximum number of peers in AllPeers map
+	MaxPeers             = 100              // Maximum number of peers in AllPeers map
 	ListenPort           = ":8080"          // Port for listening and default outbound connections
 	DialTimeout          = 5 * time.Second  // Timeout for establishing peer connections
 	ReadBufferSize       = 1024             // Buffer size for reading from peer connections
 	requestPurgeInterval = 10 * time.Second // Interval for purging stale requests
 )
 
+var DialIPChan = make(chan string) // Channel to direct connect to an IP
+
 // networkManager manages network connections and peer communications
 // Returns: A channel for receiving IP addresses to connect to
-func NetworkManager(ctx context.Context, wg *sync.WaitGroup) chan string {
+func NetworkManager(ctx context.Context, wg *sync.WaitGroup) {
 	common.PrintToLog("\nStarting up network manager...")
 
 	// Channel for receiving IPs to dial
-	dialIPChan := make(chan string)
+	//dialIPChan := make(chan string)
 
 	// Start peer creation handler
 	pendingPeerChan := peerMaker(ctx, wg) // Channel for new peer connections
@@ -45,7 +47,7 @@ func NetworkManager(ctx context.Context, wg *sync.WaitGroup) chan string {
 				common.PrintToLog("Network shutting down")
 				return
 
-			case ip := <-dialIPChan:
+			case ip := <-DialIPChan:
 				// Initiate connection to a new peer
 				wg.Add(1)
 				go connectToPeer(wg, ip, pendingPeerChan)
@@ -94,8 +96,6 @@ func NetworkManager(ctx context.Context, wg *sync.WaitGroup) chan string {
 			}
 		}
 	}()
-
-	return dialIPChan
 }
 
 // peerMaker listens for incoming connections and creates new peers
@@ -457,7 +457,6 @@ func newPeer(address string, port string, conn net.Conn, isOutbound bool) common
 		IsOutbound: isOutbound,
 		Version:    0,
 		LastSeen:   time.Now(),
-		ID:         0,
 		SendChan:   make(chan common.MessageRequest, 10),
 	}
 	return peer

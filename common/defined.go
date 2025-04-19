@@ -23,12 +23,9 @@ var (
 	MaxTargetNBits = TargetToNBits(MaxTarget)
 )
 
-var MiningState struct {
-	Active    bool
-	IsFinding bool
-	Height    int
-}
+var AllPeers map[int]*Peer = make(map[int]*Peer)
 
+// Block structure defining the parts of a block
 type Block struct { // FIELDS: 84 BYTES | IN FILE: 4 MAGIC + 84 = 88 BYTES
 	Height    int      // 4 bytes
 	Timestamp int64    // 8 bytes
@@ -38,10 +35,17 @@ type Block struct { // FIELDS: 84 BYTES | IN FILE: 4 MAGIC + 84 = 88 BYTES
 	BodyHash  [32]byte // 32 bytes
 }
 
-type WriteBlockRequest struct {
-	Blocks []Block // Blocks to be written
-	Type   string  // "sync" | "mined" | "received"
-	From   *Peer   // If received, from where
+// Peer represents a network peer with its connection details and status
+type Peer struct {
+	Address    string              // Network address of the peer
+	Port       string              // Port number for the peer
+	Conn       net.Conn            // Active network connection to the peer
+	Context    context.Context     // Context for managing peer lifecycle
+	Status     int                 // Connection status (e.g., StatusConnecting, StatusActive)
+	IsOutbound bool                // True if this is an outbound connection
+	Version    int                 // Protocol version of the peer
+	LastSeen   time.Time           // Last time the peer was active
+	SendChan   chan MessageRequest // Channel for sending message requests
 }
 
 // Message represents the structure of a blockchain network message
@@ -60,24 +64,22 @@ type MessageRequest struct {
 	ResponseChan chan Message // Channel to receive the corresponding response
 }
 
-var AllPeers map[int]*Peer = make(map[int]*Peer)
-
-// Peer represents a network peer with its connection details and status
-type Peer struct {
-	Address    string              // Network address of the peer
-	Port       string              // Port number for the peer
-	Conn       net.Conn            // Active network connection to the peer
-	Context    context.Context     // Context for managing peer lifecycle
-	Status     int                 // Connection status (e.g., StatusConnecting, StatusActive)
-	IsOutbound bool                // True if this is an outbound connection
-	Version    int                 // Protocol version of the peer
-	LastSeen   time.Time           // Last time the peer was active
-	ID         int                 // Unique identifier for the peer
-	SendChan   chan MessageRequest // Channel for sending message requests
-}
-
-// readRequest represents a request to read a block by height
+// ReadRequest represents a request to read a block by height
 type ReadRequest struct {
 	Heights  []int
 	Response chan [][]Block
+}
+
+// WriteBlockRequest represents a request to to write blocks, including its reason
+type WriteBlockRequest struct {
+	Blocks []Block // Blocks to be written
+	Type   string  // "sync" | "mined" | "received"
+	From   *Peer   // If received, from where
+}
+
+// MiningState tracks the different attributes of the miner
+var MiningState struct {
+	Active    bool // Miner is mining or preparing to mine
+	IsFinding bool // Miner is actively mining a block
+	Height    int  // Current height the miner is at
 }

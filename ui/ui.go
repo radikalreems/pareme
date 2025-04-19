@@ -28,7 +28,7 @@ type peerToggle struct {
 var outputText *widget.Label
 
 // runUI initializes and runs the main UI window with all components
-func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan string, dialIPChan chan string) {
+func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan string) {
 	// Create Fyne UI
 	a := app.New()
 	w := a.NewWindow("Pareme Blockchain Node")
@@ -40,7 +40,7 @@ func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, c
 
 	var peerToggles = make(map[int]*peerToggle)
 	var peerTogglesMutex sync.Mutex
-	networkGroup := createNetworkGroup(dialIPChan)
+	networkGroup := createNetworkGroup()
 	miningGroup := createMiningGroup(consoleMineChan)
 
 	peerControls, peerListContainer, pingButton, heightButton := createPeerControls(peerToggles, &peerTogglesMutex)
@@ -97,7 +97,7 @@ func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, c
 
 // --------- Groups
 // createNetworkGroup builds the network control section
-func createNetworkGroup(dialIPChan chan string) *fyne.Container {
+func createNetworkGroup() *fyne.Container {
 	// IP entry field
 	ipEntry := widget.NewEntry()
 	ipEntry.SetPlaceHolder("Enter IP address")
@@ -106,7 +106,7 @@ func createNetworkGroup(dialIPChan chan string) *fyne.Container {
 	connectButton := widget.NewButton("Connect", func() {
 		if ip := ipEntry.Text; ip != "" {
 			common.PrintToLog(fmt.Sprintf("Connecting to IP: %s", ip))
-			dialIPChan <- ip
+			network.DialIPChan <- ip
 			outputText.SetText(outputText.Text + fmt.Sprintf("Connecting to %s\n", ip))
 		}
 	})

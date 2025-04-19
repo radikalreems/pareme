@@ -23,7 +23,7 @@ func main() {
 	common.InitPrinter(ctx, &wg)
 
 	// Start the networking goroutine
-	dialIPChan := network.NetworkManager(ctx, &wg)
+	network.NetworkManager(ctx, &wg)
 
 	// Sync chain data from own files
 	err := io.SyncChain()
@@ -43,24 +43,24 @@ func main() {
 		return
 	}
 
-	/*
-		// Connect to a peer
-		dialIPChan <- "192.168.86.98"
-		time.Sleep(2 * time.Second)
+	// Connect to a peer
+	//network.DialIPChan <- "192.168.86.98"
+	//time.Sleep(2 * time.Second)
 
-		// Sync chain data from peers
-		err = SyncToPeers()
-		if err != nil {
-			common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
-			cancel()
-			wg.Wait()
-			return
-		}
-	*/
+	network.FindPeers()
+
+	// Sync chain data from peers
+	err = network.SyncToPeers()
+	if err != nil {
+		common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+		cancel()
+		wg.Wait()
+		return
+	}
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
 
-	ui.RunUI(ctx, cancel, &wg, consoleMineChan, dialIPChan)
+	ui.RunUI(ctx, cancel, &wg, consoleMineChan)
 
 }

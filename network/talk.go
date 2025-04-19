@@ -3,7 +3,9 @@ package network
 import (
 	"encoding/binary"
 	"fmt"
+	"net"
 	"pareme/common"
+	"time"
 )
 
 const (
@@ -14,6 +16,7 @@ const (
 	commandLatestHeight   = 1   // Command for requesting/returning chain height
 	commandBlockRequest   = 2   // Command for requesting/returning blocks
 	commandBlockBroadcast = 3   // Command for broadcasting a block
+	commandPeerDiscovery  = 4   // Command for sharing peers
 	syncChunkSize         = 100 // Number of blocks to request per sync chunk
 )
 
@@ -114,6 +117,52 @@ func SyncToPeers() error {
 	}
 
 	return nil
+
+}
+
+func FindPeers() {
+
+	if len(common.AllPeers) == 0 {
+		DialIPChan <- "192.168.86.98"
+		time.Sleep(2 * time.Second)
+		return
+	}
+
+	// Filter peers by outbound
+	var outbound []*common.Peer
+	for _, peer := range common.AllPeers {
+		if peer.IsOutbound {
+			outbound = append(outbound, peer)
+		}
+	}
+
+	// If not enough outbound, find more
+	if len(outbound) < 10 {
+		// Send peer discovery requests to current peers
+		requestingAmt := 10 - len(outbound)
+
+		var payload []byte
+		payload = append(payload, byte(requestingAmt))
+		response := RequestMessage(outbound[0], commandPeerDiscovery, payload)
+
+		amtGiven := response.PayloadSize / 16
+
+		if amtGiven == 0 {
+			return
+		}
+
+		ips := make([]net.IP, 0, amtGiven)
+
+		for i := range amtGiven {
+			ip := net.IP(response.Payload[i*16 : (i*16)+16])
+			ips = append(ips, ip)
+		}
+
+		for _, ip := range ips {
+			DialIPChan <- ip.String()
+		}
+	}
+
 }
 
 // requestMessage sends a message to a peer and waits for its response
@@ -279,6 +328,40 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 
 		// Confirm receipt with a pong response
 		return newMessage(messageKindResponse, commandPing, request.Reference, nil)
+
+	case commandPeerDiscovery:
+		// Determine how many peers are being requested
+		var numOfReqPeers uint8
+		numOfReqPeers = (request.Payload)[0]
+
+		// Gather as many peers as requested
+		var peersToSend []string
+		for i := range common.AllPeers {
+			if common.AllPeers[i].Address == from.Address {
+				continue
+			}
+
+			peersToSend = append(peersToSend, common.AllPeers[i].Address)
+
+			if len(peersToSend) >= int(numOfReqPeers) {
+				break
+			}
+		}
+
+		var payload []byte
+		for _, address := range peersToSend {
+			// IP (can be IPv4 or IPv6)
+			ip := net.ParseIP(address)
+
+			// Ensure it's in 16-byte form
+			ipBytes := ip.To16()
+
+			// Convert to payload
+			payload = append(payload, []byte(ipBytes)...)
+		}
+
+		return newMessage(messageKindResponse, commandPeerDiscovery, request.Reference, payload)
+
 	default:
 		// Handle unknown command
 		common.PrintToLog(fmt.Sprintf("Unknown command %d for ref %d", request.Command, request.Reference))
