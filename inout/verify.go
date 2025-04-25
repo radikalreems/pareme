@@ -1,4 +1,4 @@
-package io
+package inout
 
 import (
 	"bytes"
@@ -61,7 +61,7 @@ func CalculateDifficulty(nextBlock common.Block) ([32]byte, [4]byte, error) {
 }
 
 // Complete verfication steps against given blocks
-func VerifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]common.Block, []common.Block, []common.Block, error) {
+func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]common.Block, []common.Block, []common.Block, error) {
 	var verified, failed, orphaned []common.Block
 
 	// Handle genesis block case
@@ -110,7 +110,7 @@ func VerifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]
 	}
 	fileBlocksResp, err := readBlocks(datFile, dirFile, offFile, fileHeights) // Read blocks from file
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch inFileBlocks")
+		return nil, nil, nil, fmt.Errorf("failed to read blocks: %v", err)
 	}
 	var fileBlocks []common.Block
 	for _, group := range fileBlocksResp {
@@ -119,6 +119,7 @@ func VerifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]
 
 	// Prepare blocks for verification
 	type pendingBlock struct {
+		isSet    bool
 		block    common.Block
 		verified bool
 		original bool
@@ -152,11 +153,11 @@ func VerifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]
 		for _, candidate := range pending {
 			if candidate.verified && candidate.hash == pb.block.PrevHash {
 				prevBlock = candidate
+				prevBlock.isSet = true
 				break
 			}
 		}
-		var zero pendingBlock
-		if prevBlock == zero {
+		if !prevBlock.isSet {
 			common.PrintToLog(fmt.Sprintf("block %d is orphaned", pb.block.Height))
 			orphaned = append(orphaned, pb.block)
 			continue

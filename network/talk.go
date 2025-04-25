@@ -92,18 +92,35 @@ func SyncToPeers() error {
 				blocksResponse.PayloadSize, len(blocksResponse.Payload))
 		}
 
-		// Split payload into individual block byte arrays
-		numOfBlocks := int(blocksResponse.PayloadSize / common.BlockSize)
-		BlockBytes := make([][common.BlockSize]byte, numOfBlocks)
-		for j := range numOfBlocks {
-			copy(BlockBytes[j][:], blocksResponse.Payload[j*common.BlockSize:(j+1)*common.BlockSize])
+		blocks := make([]common.Block, 0)
+		buf := make([]byte, 0, blocksResponse.PayloadSize)
+		copy(buf, blocksResponse.Payload)
+		for len(buf) > 0 {
+			bodyHashesSize := uint8((buf[common.BlockHeaderSize-1 : common.BlockHeaderSize])[0])
+			blockBytes := buf[:common.BlockHeaderSize+bodyHashesSize]
+			block, err := common.ByteToBlock(blockBytes)
+			if err != nil {
+				return fmt.Errorf("failed to convert bytes to block: %v", err)
+			}
+			blocks = append(blocks, block)
+
+			buf = buf[common.BlockHeaderSize+bodyHashesSize:]
 		}
 
-		// Convert block bytes to Block structs
-		var blocks []common.Block
-		for _, blockByte := range BlockBytes {
-			blocks = append(blocks, common.ByteToBlock(blockByte))
-		}
+		/*
+			// Split payload into individual block byte arrays
+			numOfBlocks := int(blocksResponse.PayloadSize / common.BlockSize)
+			BlockBytes := make([][common.BlockSize]byte, numOfBlocks)
+			for j := range numOfBlocks {
+				copy(BlockBytes[j][:], blocksResponse.Payload[j*common.BlockSize:(j+1)*common.BlockSize])
+			}
+
+			// Convert block bytes to Block structs
+			var blocks []common.Block
+			for _, blockByte := range BlockBytes {
+				blocks = append(blocks, common.ByteToBlock(blockByte))
+			}
+		*/
 
 		// Prepare and send write block request
 		writeReq := common.WriteBlockRequest{
@@ -275,7 +292,7 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 		}
 
 		// Seralize blocks into payload
-		payload := make([]byte, 0, len(blocks)*common.BlockSize)
+		payload := make([]byte, 0)
 		for _, block := range blocks {
 			blockByte := block.ToByte()
 			payload = append(payload, blockByte[:]...)
@@ -296,12 +313,11 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 		}
 
 		// Extract block from payload
-		if len(request.Payload) != common.BlockSize {
-			common.PrintToLog(fmt.Sprintf("Invalid block size for ref %d: expected %d, got %d",
-				request.Reference, common.BlockSize, len(request.Payload)))
+		block, err := common.ByteToBlock([]byte(request.Payload))
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Failed to convert bytes into a block: %v", err))
 			return common.Message{}
 		}
-		block := common.ByteToBlock([common.BlockSize]byte(request.Payload))
 
 		// Check for duplicate block
 		currentHeight, _ := common.RequestChainStats()

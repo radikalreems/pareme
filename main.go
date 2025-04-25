@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"pareme/common"
-	"pareme/io"
+	"pareme/explorer"
+	"pareme/inout"
 	"pareme/mine"
 	"pareme/network"
 	"pareme/ui"
@@ -26,7 +27,7 @@ func main() {
 	network.NetworkManager(ctx, &wg)
 
 	// Sync chain data from own files
-	err := io.SyncChain()
+	err := inout.InitFiles()
 	if err != nil {
 		common.PrintToLog(fmt.Sprintf("Sync failed: %v", err))
 		cancel()
@@ -35,7 +36,7 @@ func main() {
 	}
 
 	// Chain is valid; start the block writer goroutine
-	newHeightsChan, err := io.BlockWriter(ctx, &wg)
+	newHeightsChan, err := inout.BlockWriter(ctx, &wg)
 	if err != nil {
 		common.PrintToLog(fmt.Sprintf("Blockwriter failed: %v", err))
 		cancel()
@@ -60,6 +61,12 @@ func main() {
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
+
+	// Start the Stats manager
+	err = explorer.StatsManager(ctx, &wg)
+	if err != nil {
+		common.PrintToLog("Failed to start Stats Manager")
+	}
 
 	ui.RunUI(ctx, cancel, &wg, consoleMineChan)
 

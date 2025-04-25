@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"pareme/common"
-	"pareme/io"
+	"pareme/inout"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +14,7 @@ import (
 
 // minerManager coordinates mining operations and chain updates
 // Returns: Channel for console commands
-func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan []int) chan string {
+func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan []int) chan []string {
 	common.PrintToLog("\nInitializing Miner...")
 
 	// Channels for mining coordination
@@ -22,9 +22,9 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 	interruptMiningChan := make(chan struct{}, 1) // Signals mining interruption
 	stopMiningChan := make(chan int)              // Signals mining to stop
 	minedBlockChan := make(chan common.Block)     // Revieves mined blocks
-	consoleChan := make(chan string)              // Connect with console
+	consoleChan := make(chan []string)            // Connect with console
 
-	var hashToMine string
+	var hashesToMine []string
 	newHeights := make([]int, 0) // Tracks new block heights
 
 	// Start the mining goroutine
@@ -58,14 +58,14 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 
 			case consoleReq := <-consoleChan:
 				// Handle console commands
-				if consoleReq != "" {
+				if len(consoleReq) != 0 {
 					if common.MiningState.Active {
 						common.PrintToLog("Already Mining!")
 					} else {
 						// Start mining
-						hashToMine = consoleReq
+						hashesToMine = consoleReq
 						currentHeight, _ := common.RequestChainStats()
-						nextBlock, err := buildBlock(currentHeight, hashToMine)
+						nextBlock, err := buildBlock(currentHeight, hashesToMine)
 						if err != nil {
 							common.PrintToLog(fmt.Sprintf("Failed to build next block: %v", err))
 							continue
@@ -126,7 +126,7 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 					}
 				}
 				if !common.MiningState.IsFinding {
-					nextBlock, err := buildBlock(maxHeight, hashToMine)
+					nextBlock, err := buildBlock(maxHeight, hashesToMine)
 					if err != nil {
 						common.PrintToLog(fmt.Sprintf("Failed to build block: %v", err))
 						continue
@@ -168,9 +168,10 @@ func findNonce(b common.Block, interruptChan <-chan struct{}) int {
 
 	for i := 1; i <= common.MaxNonce; i++ {
 		if i%1000 == 0 {
+			//common.PrintToLog(fmt.Sprintf("Current hash: %v", b.Hash()))
 			select {
 			case <-interruptChan:
-				common.PrintToLog(fmt.Sprintf("Nonce search interrupted for Block %d", b.Height))
+				common.PrintToLog(fmt.Sprintf("Nonce search interrupted for Block %d on nonce %v", b.Height, i))
 				return -1
 			default:
 			}
@@ -188,7 +189,7 @@ func findNonce(b common.Block, interruptChan <-chan struct{}) int {
 }
 
 // buildBlock constructs a new block for mining based on the current height
-func buildBlock(height int, hashToMine string) (common.Block, error) {
+func buildBlock(height int, hashesToMine []string) (common.Block, error) {
 	var currentBlock common.Block
 	if height == 1 {
 		currentBlock = common.GenesisBlock()
@@ -197,17 +198,33 @@ func buildBlock(height int, hashToMine string) (common.Block, error) {
 	}
 	prevHash := currentBlock.Hash()
 
-	hashToMineBytes, err := hashStringToByte32(hashToMine)
+	hashesToMineBytes := make([][32]byte, 0, len(hashesToMine))
 
-	if err != nil {
-		return common.Block{}, fmt.Errorf("failed to convert hash to bytes: %v", err)
+	for _, hash := range hashesToMine {
+		hashBytes, err := hashStringToByte32(hash)
+		if err != nil {
+			return common.Block{}, fmt.Errorf("failed to convert hash to bytes: %v", err)
+		}
+
+		hashesToMineBytes = append(hashesToMineBytes, hashBytes)
 	}
 
-	nextBlock := common.NewBlock(height+1, prevHash, currentBlock.NBits, hashToMineBytes)
+	/*
+		hashToMineBytes, err := hashStringToByte32(hashToMine)
+		if err != nil {
+			return common.Block{}, fmt.Errorf("failed to convert hash to bytes: %v", err)
+		}
+	*/
+
+	nextBlock, err := common.NewBlock(height+1, prevHash, currentBlock.NBits, hashesToMineBytes)
+	if err != nil {
+		return common.Block{}, fmt.Errorf("failed to create newBlock: %v", err)
+	}
+
 	if (height)%2016 == 0 && height != 2016 { // Skip first ever adjustment
 		// Adjust difficulty every 2016 blocks (except genesis)
 		//nextBlock.Difficulty = adjustDifficulty(nextBlock)
-		_, nBits, err := io.CalculateDifficulty(nextBlock)
+		_, nBits, err := inout.CalculateDifficulty(nextBlock)
 		if err != nil {
 			return common.Block{}, fmt.Errorf("failed to determine difficulty: %v", err)
 		}

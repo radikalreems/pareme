@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"slices"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -28,7 +30,7 @@ type peerToggle struct {
 var outputText *widget.Label
 
 // runUI initializes and runs the main UI window with all components
-func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan string) {
+func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, consoleMineChan chan []string) {
 	// Create Fyne UI
 	a := app.New()
 	w := a.NewWindow("Pareme Blockchain Node")
@@ -181,16 +183,66 @@ func createPeerControls(peerToggles map[int]*peerToggle, mutex *sync.Mutex) (*fy
 }
 
 // createMiningGroup sets up the mining control section
-func createMiningGroup(consoleMineChan chan string) *fyne.Container {
-	hashEntry := widget.NewEntry()
-	hashEntry.SetPlaceHolder("Enter Hash To Mine")
-	hashEntry.Text = "78d031901879f64da61a41dd1e0c8a16d1ace1b9b61133db079413a816e765d2" // "pareme"
+func createMiningGroup(consoleMineChan chan []string) *fyne.Container {
+
+	hashEntries := []*widget.Entry{}
+	hashContainer := container.NewVBox()
+
+	createEntryRow := func(entry *widget.Entry, canRemove bool) *fyne.Container {
+		rowContainer := container.NewBorder(nil, nil, nil, nil, entry)
+		if !canRemove {
+			return rowContainer
+		}
+
+		removeButton := widget.NewButton("Remove", func() {
+			// Find index and remove
+			for i, e := range hashEntries {
+				if e == entry {
+					hashEntries = slices.Delete(hashEntries, i, i+1)
+					break
+				}
+			}
+			hashContainer.Remove(rowContainer)
+			hashContainer.Refresh()
+		})
+		rowContainer = container.NewBorder(nil, nil, nil, removeButton, entry)
+		return rowContainer
+	}
+
+	firstEntry := widget.NewEntry()
+	firstEntry.SetPlaceHolder("Enter Hash To Mine")
+	firstEntry.Text = "78d031901879f64da61a41dd1e0c8a16d1ace1b9b61133db079413a816e765d2" // "pareme"
+
+	hashEntries = append(hashEntries, firstEntry)
+	hashContainer.Add(createEntryRow(firstEntry, false))
+
+	addButton := widget.NewButton("Add Hash", func() {
+		if len(hashEntries) < 10 {
+			newEntry := widget.NewEntry()
+			newEntry.SetPlaceHolder("Enter Hash To Mine")
+
+			hashEntries = append(hashEntries, newEntry)
+			hashContainer.Add(createEntryRow(newEntry, true))
+			hashContainer.Refresh()
+		}
+	})
+
+	//hashEntry := widget.NewEntry()
+	//hashEntry.SetPlaceHolder("Enter Hash To Mine")
+	//hashEntry.Text = "78d031901879f64da61a41dd1e0c8a16d1ace1b9b61133db079413a816e765d2" // "pareme"
 
 	// Button to start mining with given hash
 	startMineButton := widget.NewButton("Start Mining", func() {
 		common.PrintToLog("Recieved 'start mine' command")
-		hash := hashEntry.Text
-		consoleMineChan <- hash
+		var collected []string
+		for _, entry := range hashEntries {
+			if entry.Text == "" {
+				continue
+			}
+			collected = append(collected, entry.Text)
+		}
+		common.PrintToLog(fmt.Sprintf("hashes to mine: %v", collected))
+		consoleMineChan <- collected
 		outputText.SetText(outputText.Text + "Mining started\n")
 	})
 	startMineButton.Importance = widget.HighImportance
@@ -198,13 +250,15 @@ func createMiningGroup(consoleMineChan chan string) *fyne.Container {
 	// Button to stop mining
 	stopMineButton := widget.NewButton("Stop Mining", func() {
 		common.PrintToLog("Recieved 'stop mine' command")
-		consoleMineChan <- ""
+		consoleMineChan <- []string{}
 		outputText.SetText(outputText.Text + "Mining stopped\n")
 	})
 
 	return container.NewVBox(
 		createTitleLabel("Mining Controls"),
-		container.NewPadded(hashEntry),
+		hashContainer,
+		addButton,
+		//container.NewPadded(hashEntry),
 		container.NewHBox(
 			container.NewPadded(startMineButton),
 			container.NewPadded(stopMineButton),

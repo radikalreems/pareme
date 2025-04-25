@@ -3,31 +3,45 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 	"time"
 )
 
+var genesisBodyHash = [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
 // METHODS
-func (b Block) ToByte() [BlockSize]byte {
-	var result [BlockSize]byte
+func (b Block) ToByte() []byte {
+	result := make([]byte, 0, BlockHeaderSize+32*b.BodySize)
 
 	// Height: int (4 bytes)
-	binary.BigEndian.PutUint32(result[0:4], uint32(b.Height))
+	heightBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(heightBytes, uint32(b.Height))
+	result = append(result, heightBytes...)
 
 	// Timestamp: int 64 (8 bytes)
-	binary.BigEndian.PutUint64(result[4:12], uint64(b.Timestamp))
+	timestampBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(timestampBytes, uint64(b.Timestamp))
+	result = append(result, timestampBytes...)
 
 	// PrevHash: [32]byte (32 bytes)
-	copy(result[12:44], b.PrevHash[:])
+	result = append(result, b.PrevHash[:]...)
 
 	// NBits: [4]byte (4 bytes)
-	copy(result[44:48], b.NBits[:])
+	result = append(result, b.NBits[:]...)
 
 	// Nonce: int (4 bytes)
-	binary.BigEndian.PutUint32(result[48:52], uint32(b.Nonce))
+	nonceBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(nonceBytes, uint32(b.Nonce))
+	result = append(result, nonceBytes...)
 
-	// BodyHash: [32]byte (32 bytes)
-	copy(result[52:84], b.BodyHash[:])
+	// BodySize: int (1 bytes)
+	result = append(result, b.BodySize)
+
+	// BodyHashes: [32]byte (32 bytes each)
+	for _, hash := range b.BodyHashes {
+		result = append(result, hash[:]...)
+	}
 
 	return result
 }
@@ -66,41 +80,74 @@ func RequestChainStats() (int, int) {
 	return int(result[0]), int(result[1])
 }
 
-func NewBlock(height int, prevHash [32]byte, nBits [4]byte, bodyHash [32]byte) Block {
-	block := Block{
-		Height:    height,
-		Timestamp: time.Now().UnixMilli(),
-		PrevHash:  prevHash,
-		Nonce:     0,
-		NBits:     nBits,
-		BodyHash:  bodyHash,
+func NewBlock(height int, prevHash [32]byte, nBits [4]byte, bodyHashes [][32]byte) (Block, error) {
+	if len(bodyHashes) > MaxBodyHashes || len(bodyHashes) < 1 {
+		return Block{}, fmt.Errorf("invalid amount of body hashes %v", len(bodyHashes))
 	}
-	return block
+	block := Block{
+		Height:     height,
+		Timestamp:  time.Now().UnixMilli(),
+		PrevHash:   prevHash,
+		Nonce:      0,
+		NBits:      nBits,
+		BodySize:   uint8(len(bodyHashes)),
+		BodyHashes: bodyHashes,
+	}
+	return block, nil
 }
 
 func GenesisBlock() Block {
 	block := Block{
-		Height:    1,
-		Timestamp: 1230940800000,
-		PrevHash:  [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		Nonce:     0,
-		NBits:     MaxTargetNBits,
-		BodyHash:  [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Height:     1,
+		Timestamp:  1230940800000,
+		PrevHash:   [32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		Nonce:      0,
+		NBits:      MaxTargetNBits,
+		BodySize:   1,
+		BodyHashes: [][32]byte{genesisBodyHash},
 	}
 	return block
 }
 
-func ByteToBlock(data [BlockSize]byte) Block {
+func ByteToBlock(data []byte) (Block, error) {
 	var block Block
+
+	// Height
 	block.Height = int(binary.BigEndian.Uint32(data[:4]))
+
+	// Timestamp
 	block.Timestamp = int64(binary.BigEndian.Uint64(data[4:12]))
+
+	// PrevHash
 	copy(block.PrevHash[:], data[12:44])
+
+	// NBits
 	copy(block.NBits[:], data[44:48])
+
+	// Nonce
 	block.Nonce = int(binary.BigEndian.Uint32(data[48:52]))
-	copy(block.BodyHash[:], data[52:84])
-	return block
+
+	// BodySize
+	if (len(data)-BlockHeaderSize)%32 != 0 {
+		return Block{}, fmt.Errorf("invalid data size")
+	}
+	block.BodySize = uint8((len(data) - BlockHeaderSize) / 32)
+	if block.BodySize > MaxBodyHashes || block.BodySize < 1 {
+		return Block{}, fmt.Errorf("invalid hash amount of %v", block.BodySize)
+	}
+
+	// BodyHashes
+	var hash [32]byte
+
+	for i := range int(block.BodySize) {
+		copy(hash[:], data[BlockHeaderSize+i*32:(BlockHeaderSize+32)+i*32])
+		block.BodyHashes = append(block.BodyHashes, hash)
+	}
+
+	return block, nil
 }
 
+/*
 func BlockToByte(b Block) [BlockSize]byte {
 	var result [BlockSize]byte
 
@@ -124,6 +171,7 @@ func BlockToByte(b Block) [BlockSize]byte {
 
 	return result
 }
+*/
 
 func NBitsToTarget(nBits [4]byte) [32]byte {
 	size := int(nBits[0])
