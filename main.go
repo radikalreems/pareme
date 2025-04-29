@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"pareme/common"
 	"pareme/explorer"
 	"pareme/inout"
 	"pareme/mine"
 	"pareme/network"
 	"pareme/ui"
+	"strings"
 	"sync"
 )
 
@@ -44,20 +47,18 @@ func main() {
 		return
 	}
 
-	// Connect to a peer
-	//network.DialIPChan <- "192.168.86.98"
-	//time.Sleep(2 * time.Second)
+	/*
+		network.FindPeers()
 
-	network.FindPeers()
-
-	// Sync chain data from peers
-	err = network.SyncToPeers()
-	if err != nil {
-		common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
-		cancel()
-		wg.Wait()
-		return
-	}
+		// Sync chain data from peers
+		err = network.SyncToPeers()
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+			cancel()
+			wg.Wait()
+			return
+		}
+	*/
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
@@ -68,6 +69,38 @@ func main() {
 		common.PrintToLog("Failed to start Stats Manager")
 	}
 
-	ui.RunUI(ctx, cancel, &wg, consoleMineChan)
+	fmt.Println("Program running in headless mode. Type 'ui' to launch the GUI, or 'exit' to quit.")
+
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Context canceled, exiting...")
+			wg.Wait()
+			return
+		default:
+			fmt.Print("Pareme> ")
+			input, err := reader.ReadString('\n')
+			if err != nil {
+				common.PrintToLog(fmt.Sprintf("Input error: %v", err))
+				break
+			}
+
+			input = strings.TrimSpace(input)
+
+			enteredUI := false
+			switch {
+			case input == "ui" && !enteredUI:
+				ui.RunUI(ctx, cancel, &wg, consoleMineChan)
+				enteredUI = true
+			case input == "exit":
+				cancel()
+				wg.Wait()
+				return
+			default:
+				fmt.Println("Unknown command")
+			}
+		}
+	}
 
 }

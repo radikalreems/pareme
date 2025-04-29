@@ -120,7 +120,7 @@ func updateDB(datFile *os.File, db *leveldb.DB) error {
 		return fmt.Errorf("incorrect last offset; expected less than %v, got %v", datStat.Size(), lastOffset)
 	}
 
-	common.PrintToLog(fmt.Sprintf("Updated DB: DAT size %v; lastoffset %v", datStat.Size(), lastOffset))
+	//common.PrintToLog(fmt.Sprintf("Updated DB: DAT size %v; lastoffset %v", datStat.Size(), lastOffset))
 
 	maxBlockReads := 1000
 	blockReadCount := 0

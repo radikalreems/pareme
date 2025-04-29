@@ -42,7 +42,7 @@ func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, c
 
 	var peerToggles = make(map[int]*peerToggle)
 	var peerTogglesMutex sync.Mutex
-	networkGroup := createNetworkGroup()
+	networkGroup := createNetworkGroup(cancel)
 	miningGroup := createMiningGroup(consoleMineChan)
 
 	peerControls, peerListContainer, pingButton, heightButton := createPeerControls(peerToggles, &peerTogglesMutex)
@@ -99,25 +99,39 @@ func RunUI(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, c
 
 // --------- Groups
 // createNetworkGroup builds the network control section
-func createNetworkGroup() *fyne.Container {
-	// IP entry field
-	ipEntry := widget.NewEntry()
-	ipEntry.SetPlaceHolder("Enter IP address")
-
-	// Button to connect to given IP
-	connectButton := widget.NewButton("Connect", func() {
-		if ip := ipEntry.Text; ip != "" {
+func createNetworkGroup(cancel context.CancelFunc) *fyne.Container {
+	// Direct IP connect field
+	directIPEntry := widget.NewEntry()
+	directIPEntry.SetPlaceHolder("Enter IP address")
+	directConnectButton := widget.NewButton("Direct Connect", func() {
+		if ip := directIPEntry.Text; ip != "" {
 			common.PrintToLog(fmt.Sprintf("Connecting to IP: %s", ip))
 			network.DialIPChan <- ip
 			outputText.SetText(outputText.Text + fmt.Sprintf("Connecting to %s\n", ip))
+		}
+	})
+	directConnectRow := container.NewBorder(nil, nil, nil, directConnectButton, directIPEntry)
+
+	// Connect to the existing network
+	networkConnectButton := widget.NewButton("Connect to Network", func() {
+		network.FindPeers()
+
+		// Sync chain data from peers
+		err := network.SyncToPeers()
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
+			cancel()
+			return
 		}
 	})
 
 	// Create the baseline network group container
 	return container.NewVBox(
 		createTitleLabel("Network Controls"),
-		container.NewPadded(ipEntry),
-		container.NewPadded(connectButton),
+		directConnectRow,
+		container.NewPadded(networkConnectButton),
+		//container.NewPadded(ipEntry),
+		//container.NewPadded(connectButton),
 		layout.NewSpacer(),
 	)
 }
