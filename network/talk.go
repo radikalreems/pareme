@@ -140,7 +140,7 @@ func SyncToPeers() error {
 func FindPeers() {
 
 	if len(common.AllPeers) == 0 {
-		DialIPChan <- "2602:ffb6:4:6279:f816:3eff:fe02:6fa5"
+		DialIPChan <- "170.75.161.198"
 		time.Sleep(2 * time.Second)
 		return
 	}

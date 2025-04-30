@@ -174,10 +174,16 @@ func peerMaker(ctx context.Context, wg *sync.WaitGroup) chan common.Peer {
 func connectToPeer(wg *sync.WaitGroup, ip string, pendingPeerChan chan common.Peer) {
 	defer wg.Done()
 
-	// Append default port if not specified
 	_, _, err := net.SplitHostPort(ip)
 	if err != nil {
-		ip = ip + ListenPort
+		if net.ParseIP(ip) != nil {
+			host := ip
+			port := ListenPort[1:]
+			ip = net.JoinHostPort(host, port)
+		} else {
+			common.PrintToLog(fmt.Sprintf("Invalid address %s: %v", ip, err))
+			return
+		}
 	}
 
 	conn, err := net.DialTimeout("tcp", ip, DialTimeout)
@@ -186,7 +192,6 @@ func connectToPeer(wg *sync.WaitGroup, ip string, pendingPeerChan chan common.Pe
 		return
 	}
 
-	// Create and register peer
 	host, port, err := net.SplitHostPort(conn.RemoteAddr().String())
 	if err != nil {
 		common.PrintToLog(fmt.Sprintf("Failed to parse address %s: %v", conn.RemoteAddr().String(), err))
@@ -196,6 +201,31 @@ func connectToPeer(wg *sync.WaitGroup, ip string, pendingPeerChan chan common.Pe
 	peer := newPeer(host, port, conn, true)
 	common.PrintToLog(fmt.Sprintf("Connected to peer: %s:%s", host, port))
 	pendingPeerChan <- peer
+
+	/*
+		// Append default port if not specified
+		_, _, err := net.SplitHostPort(ip)
+		if err != nil {
+			ip = ip + ListenPort
+		}
+
+		conn, err := net.DialTimeout("tcp", ip, DialTimeout)
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Failed to connect to %s: %v", ip, err))
+			return
+		}
+
+		// Create and register peer
+		host, port, err := net.SplitHostPort(conn.RemoteAddr().String())
+		if err != nil {
+			common.PrintToLog(fmt.Sprintf("Failed to parse address %s: %v", conn.RemoteAddr().String(), err))
+			conn.Close()
+			return
+		}
+		peer := newPeer(host, port, conn, true)
+		common.PrintToLog(fmt.Sprintf("Connected to peer: %s:%s", host, port))
+		pendingPeerChan <- peer
+	*/
 
 }
 
