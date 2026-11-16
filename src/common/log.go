@@ -21,6 +21,9 @@ const (
 // initPrinter starts a goroutine to handle logging to pareme.log
 func InitPrinter(ctx context.Context, wg *sync.WaitGroup) {
 	PrintToLog("\nStarting up printer...")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		panic("failed to create log directory: " + err.Error())
+	}
 	logPath := filepath.Join(logDir, logFile)
 
 	// Truncate existing log file if it exists

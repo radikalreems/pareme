@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"pareme/common"
-	"pareme/network"
+	"pareme/src/common"
+	"pareme/src/network"
 	"path/filepath"
 	"sync"
 )

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"pareme/common"
+	"pareme/src/common"
 	"sort"
 	"time"
 )

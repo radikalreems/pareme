@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"pareme/common"
+	"pareme/src/common"
 	"time"
 )
 

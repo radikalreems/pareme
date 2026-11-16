@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"pareme/common"
+	"pareme/src/common"
 	"sync"
 
 	"github.com/gorilla/handlers"

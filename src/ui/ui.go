@@ -3,8 +3,8 @@ package ui
 import (
 	"context"
 	"fmt"
-	"pareme/common"
-	"pareme/network"
+	"pareme/src/common"
+	"pareme/src/network"
 	"sync"
 	"time"
 

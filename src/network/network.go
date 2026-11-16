@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"pareme/common"
+	"pareme/src/common"
 	"sync"
 	"time"
 )
