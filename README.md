@@ -12,8 +12,6 @@ Startup reads those files and writes a genesis block when the data file is empty
 
 Difficulty is retargeted every 2016 blocks, aiming for about 10 seconds per block.
 
-The explorer reads the data file and counts each body hash. The API on port 8000 returns that count.
-
 ## Run
 
 Go 1.24. The window uses [Fyne](https://fyne.io), so the build needs CGO and a C compiler.
@@ -26,13 +24,11 @@ go run ./src
 
 The node starts headless. Type `ui` to open the window, or `exit` to quit.
 
-It writes `blocks/`, `explorer/db`, and `common/pareme.log` in the working directory.
+It writes `blocks/` and `common/pareme.log` in the working directory.
 
 ## Network
 
 Peers use port 8080. The node does not connect out until you use Connect in the window.
-
-`GET http://localhost:8000/hash/{hash}` returns how often that hash appears in block bodies. The hash is 64 hex characters.
 
 ## Code
 
@@ -42,6 +38,5 @@ src/common       block format and logging
 src/inout        chain files and verification
 src/mine         mining
 src/network      peers
-src/explorer     hash counts and the API
 src/ui           desktop window
 ```

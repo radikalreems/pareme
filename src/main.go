@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"pareme/src/common"
-	"pareme/src/explorer"
 	"pareme/src/inout"
 	"pareme/src/mine"
 	"pareme/src/network"
@@ -62,12 +61,6 @@ func main() {
 
 	// Start the miner manager with the current chain height
 	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
-
-	// Start the Stats manager
-	err = explorer.StatsManager(ctx, &wg)
-	if err != nil {
-		common.PrintToLog("Failed to start Stats Manager")
-	}
 
 	fmt.Println("Program running in headless mode. Type 'ui' to launch the GUI, or 'exit' to quit.")
 
