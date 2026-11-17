@@ -756,28 +756,14 @@ func ReadOneBlock(datFile *os.File, offset int64) ([]byte, common.Block, error) 
 		return nil, common.Block{}, fmt.Errorf("failed to verify magic bytes: expected %v, got %v", MagicBytes, string(magic))
 	}
 
-	// Read block header
-	blockHeader := make([]byte, common.BlockHeaderSize)
-	n, err = datFile.Read(blockHeader)
+	// Read block
+	blockBytes := make([]byte, common.BlockSize)
+	n, err = datFile.Read(blockBytes)
 	if err != nil {
 		return nil, common.Block{}, fmt.Errorf("failed to read DAT file at offset %v: %v", offset+MagicSize, err)
 	}
-	if n != common.BlockHeaderSize {
-		return nil, common.Block{}, fmt.Errorf("failed to read block header bytes: expected %v bytes, got %v", common.BlockHeaderSize, n)
-	}
-
-	// Extract BodyHashSize
-	bodyHashSize := (blockHeader[common.BlockHeaderSize-1:])[0]
-	bodyHashSizeBytes := int(bodyHashSize * 32)
-
-	// Read Body Hashes
-	bodyHashes := make([]byte, bodyHashSizeBytes)
-	n, err = datFile.Read(bodyHashes)
-	if err != nil {
-		return nil, common.Block{}, fmt.Errorf("failed to read DAT file at offset %v: %v", offset+MagicSize+common.BlockHeaderSize, err)
-	}
-	if n != bodyHashSizeBytes {
-		return nil, common.Block{}, fmt.Errorf("failed to read block hashes bytes: expected %v bytes, got %v", bodyHashSizeBytes, n)
+	if n != common.BlockSize {
+		return nil, common.Block{}, fmt.Errorf("failed to read block bytes: expected %v bytes, got %v", common.BlockSize, n)
 	}
 
 	// Verify that the block is finished
@@ -785,12 +771,12 @@ func ReadOneBlock(datFile *os.File, offset int64) ([]byte, common.Block, error) 
 	if err != nil {
 		return nil, common.Block{}, fmt.Errorf("failed to stat DAT file: %v", err)
 	}
-	if datStat.Size() != offset+MagicSize+common.BlockHeaderSize+int64(bodyHashSizeBytes) {
+	if datStat.Size() != offset+MagicSize+common.BlockSize {
 		// Check next magic
 		magic := make([]byte, MagicSize)
 		n, err := datFile.Read(magic)
 		if err != nil {
-			return nil, common.Block{}, fmt.Errorf("failed to read DAT file at offset %v: %v", offset+MagicSize+common.BlockHeaderSize+int64(bodyHashSizeBytes), err)
+			return nil, common.Block{}, fmt.Errorf("failed to read DAT file at offset %v: %v", offset+MagicSize+common.BlockSize, err)
 		}
 		if n != MagicSize {
 			return nil, common.Block{}, fmt.Errorf("failed to read end magic bytes: read %v bytes, expected %v", MagicSize, n)
@@ -801,9 +787,6 @@ func ReadOneBlock(datFile *os.File, offset int64) ([]byte, common.Block, error) 
 	}
 
 	// Convert blockBytes to block
-	var blockBytes []byte
-	blockBytes = append(blockBytes, blockHeader...)
-	blockBytes = append(blockBytes, bodyHashes...)
 	block, err := common.ByteToBlock(blockBytes)
 	if err != nil {
 		return nil, common.Block{}, fmt.Errorf("failed to convert bytes to block: %v", err)

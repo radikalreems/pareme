@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	//BlockSize = 84 // Size of a block (not including 4 byte magic when written)
 	MaxNonce        = 1_000_000_000
-	BlockHeaderSize = 53               // Height + Timestamp + PrevHash + NBits + Nonce + BodySize
-	MaxBodyHashes   = 10               // Max number of Body Hashes in a block
+	BlockSize       = 84               // Height + Timestamp + PrevHash + NBits + Nonce + BodyHash
+	BlockHeaderSize = 52               // Height + Timestamp + PrevHash + NBits + Nonce
 	BlocksDir       = "blocks"         // Directory for block data
 	DirIndexFile    = "dir0000.idx"    // Directory index file
 	OffIndexFile    = "off0000.idx"    // Offset index file
@@ -35,14 +34,13 @@ var RWMu sync.RWMutex
 var AllPeers map[int]*Peer = make(map[int]*Peer)
 
 // Block structure defining the parts of a block
-type Block struct { // HEADER: 53 BYTES | IN FILE: 4 MAGIC + 53 + (32 * Number of body hashes)
-	Height     int        // 4 bytes
-	Timestamp  int64      // 8 bytes
-	PrevHash   [32]byte   // 32 bytes
-	NBits      [4]byte    // 4 bytes
-	Nonce      int        // 4 bytes
-	BodySize   uint8      // 1 byte
-	BodyHashes [][32]byte // 32 bytes each ( 10 max )
+type Block struct { // 84 BYTES | IN FILE: 4 MAGIC + 84
+	Height    int      // 4 bytes
+	Timestamp int64    // 8 bytes
+	PrevHash  [32]byte // 32 bytes
+	NBits     [4]byte  // 4 bytes
+	Nonce     int      // 4 bytes
+	BodyHash  [32]byte // 32 bytes
 }
 
 // Peer represents a network peer with its connection details and status

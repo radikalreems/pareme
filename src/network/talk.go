@@ -92,19 +92,18 @@ func SyncToPeers() error {
 				blocksResponse.PayloadSize, len(blocksResponse.Payload))
 		}
 
-		blocks := make([]common.Block, 0)
-		buf := make([]byte, 0, blocksResponse.PayloadSize)
-		copy(buf, blocksResponse.Payload)
+		buf := blocksResponse.Payload
+		if len(buf)%common.BlockSize != 0 {
+			return fmt.Errorf("response payload size %d is not a multiple of block size %d", len(buf), common.BlockSize)
+		}
+		blocks := make([]common.Block, 0, len(buf)/common.BlockSize)
 		for len(buf) > 0 {
-			bodyHashesSize := uint8((buf[common.BlockHeaderSize-1 : common.BlockHeaderSize])[0])
-			blockBytes := buf[:common.BlockHeaderSize+bodyHashesSize]
-			block, err := common.ByteToBlock(blockBytes)
+			block, err := common.ByteToBlock(buf[:common.BlockSize])
 			if err != nil {
 				return fmt.Errorf("failed to convert bytes to block: %v", err)
 			}
 			blocks = append(blocks, block)
-
-			buf = buf[common.BlockHeaderSize+bodyHashesSize:]
+			buf = buf[common.BlockSize:]
 		}
 
 		/*

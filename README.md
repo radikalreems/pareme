@@ -4,7 +4,7 @@ Pareme is a blockchain node. It stores a local chain, mines blocks, and can open
 
 ## How it works
 
-A block is a header plus up to 10 hashes. The header holds the height, timestamp, previous block hash, difficulty, and nonce. The node hashes the whole block with SHA-256. Mining tries nonces until that hash is under the difficulty target.
+A block is a header plus one hash. The header holds the height, timestamp, previous block hash, difficulty, and nonce. The node hashes the whole block with SHA-256. Mining tries nonces until that hash is under the difficulty target.
 
 Blocks live in files under `blocks/`. `pareme0000.dat` is the chain data. Two index files record where each height sits in that file. A height can hold more than one block.
 

@@ -141,38 +141,36 @@ func updateDB(datFile *os.File, db *leveldb.DB) error {
 			return fmt.Errorf("failed to read one block at offset %v: %v", lastOffset, err)
 		}
 
-		for _, hashArray := range block.BodyHashes {
-			hash := hashArray[:]
-			hashExist, err := db.Has(hash, nil)
+		hash := block.BodyHash[:]
+		hashExist, err := db.Has(hash, nil)
+		if err != nil {
+			return fmt.Errorf("failed to check existence of hash %v: %v", hash, err)
+		}
+
+		if hashExist {
+			// Get frequency
+			freqBytes, err := db.Get(hash, nil)
 			if err != nil {
-				return fmt.Errorf("failed to check existence of hash %v: %v", hash, err)
+				return fmt.Errorf("failed to get freq for hash %v: %v", hash, err)
 			}
 
-			if hashExist {
-				// Get frequency
-				freqBytes, err := db.Get(hash, nil)
-				if err != nil {
-					return fmt.Errorf("failed to get freq for hash %v: %v", hash, err)
-				}
+			// Increment by 1
+			freq := binary.BigEndian.Uint32(freqBytes)
+			freq++
+			binary.BigEndian.PutUint32(freqBytes, freq)
 
-				// Increment by 1
-				freq := binary.BigEndian.Uint32(freqBytes)
-				freq++
-				binary.BigEndian.PutUint32(freqBytes, freq)
+			// Write frequency
+			err = db.Put(hash, freqBytes, nil)
+			if err != nil {
+				return fmt.Errorf("failed to update frequency for hash %v to  %v in DB: %v", hash, freq, err)
+			}
+		} else {
+			freqBytes := make([]byte, 4)
+			binary.BigEndian.PutUint32(freqBytes, 1)
 
-				// Write frequency
-				err = db.Put(hash, freqBytes, nil)
-				if err != nil {
-					return fmt.Errorf("failed to update frequency for hash %v to  %v in DB: %v", hash, freq, err)
-				}
-			} else {
-				freqBytes := make([]byte, 4)
-				binary.BigEndian.PutUint32(freqBytes, 1)
-
-				err := db.Put(hash, freqBytes, nil)
-				if err != nil {
-					return fmt.Errorf("failed to insert new frequency for hash %v in DB: %v", hash, err)
-				}
+			err := db.Put(hash, freqBytes, nil)
+			if err != nil {
+				return fmt.Errorf("failed to insert new frequency for hash %v in DB: %v", hash, err)
 			}
 		}
 
