@@ -14,7 +14,7 @@ import (
 
 // minerManager coordinates mining operations and chain updates
 // Returns: Channel for console commands
-func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan []int) chan string {
+func MinerManager(ctx context.Context, wg *sync.WaitGroup, chain *inout.Chain, newHeightsChan chan []int) chan string {
 	common.PrintToLog("\nInitializing Miner...")
 
 	// Channels for mining coordination
@@ -64,8 +64,8 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 					} else {
 						// Start mining
 						hashToMine = consoleReq
-						currentHeight, _ := common.RequestChainStats()
-						nextBlock, err := buildBlock(currentHeight, hashToMine)
+						currentHeight, _ := chain.Stats()
+						nextBlock, err := buildBlock(chain, currentHeight, hashToMine)
 						if err != nil {
 							common.PrintToLog(fmt.Sprintf("Failed to build next block: %v", err))
 							continue
@@ -100,12 +100,9 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 				// Mined block; send to writer
 				hash := block.Hash()
 				common.PrintToLog(fmt.Sprintf("Mined Block %d with Hash: %x | ID: %x", block.Height, hash[:8], hash[30:]))
-				writeBlockReq := common.WriteBlockRequest{
-					Blocks: []common.Block{block},
-					Type:   "mined",
-					From:   nil,
+				if err := chain.Submit([]common.Block{block}, "mined", nil); err != nil {
+					common.PrintToLog(fmt.Sprintf("failed to write mined block %d: %v", block.Height, err))
 				}
-				common.WriteBlockChan <- writeBlockReq // Send to writer
 
 			case heights := <-newHeightsChan:
 				// Handle new heights
@@ -126,7 +123,7 @@ func MinerManager(ctx context.Context, wg *sync.WaitGroup, newHeightsChan chan [
 					}
 				}
 				if !common.MiningState.IsFinding {
-					nextBlock, err := buildBlock(maxHeight, hashToMine)
+					nextBlock, err := buildBlock(chain, maxHeight, hashToMine)
 					if err != nil {
 						common.PrintToLog(fmt.Sprintf("Failed to build block: %v", err))
 						continue
@@ -189,12 +186,12 @@ func findNonce(b common.Block, interruptChan <-chan struct{}) int {
 }
 
 // buildBlock constructs a new block for mining based on the current height
-func buildBlock(height int, hashToMine string) (common.Block, error) {
+func buildBlock(chain *inout.Chain, height int, hashToMine string) (common.Block, error) {
 	var currentBlock common.Block
 	if height == 1 {
 		currentBlock = common.GenesisBlock()
 	} else {
-		currentBlock = common.RequestBlocks([]int{height})[0][0]
+		currentBlock = chain.Read([]int{height})[0][0]
 	}
 	prevHash := currentBlock.Hash()
 
@@ -208,7 +205,7 @@ func buildBlock(height int, hashToMine string) (common.Block, error) {
 	if (height)%2016 == 0 && height != 2016 { // Skip first ever adjustment
 		// Adjust difficulty every 2016 blocks (except genesis)
 		//nextBlock.Difficulty = adjustDifficulty(nextBlock)
-		_, nBits, err := inout.CalculateDifficulty(nextBlock)
+		_, nBits, err := inout.CalculateDifficulty(nextBlock, chain.Read(inout.DifficultyHeights(nextBlock)))
 		if err != nil {
 			return common.Block{}, fmt.Errorf("failed to determine difficulty: %v", err)
 		}

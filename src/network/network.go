@@ -26,7 +26,7 @@ var DialIPChan = make(chan string) // Channel to direct connect to an IP
 
 // networkManager manages network connections and peer communications
 // Returns: A channel for receiving IP addresses to connect to
-func NetworkManager(ctx context.Context, wg *sync.WaitGroup) {
+func NetworkManager(ctx context.Context, wg *sync.WaitGroup, chain Chain) {
 	common.PrintToLog("\nStarting up network manager...")
 
 	// Channel for receiving IPs to dial
@@ -79,7 +79,7 @@ func NetworkManager(ctx context.Context, wg *sync.WaitGroup) {
 				}
 
 				// Handle the peer
-				managePeer(ctx, peerCtx, cancel, wg, &pendingPeer)
+				managePeer(ctx, peerCtx, cancel, wg, &pendingPeer, chain)
 
 			default:
 				// Clean up disconnected peers
@@ -230,7 +230,7 @@ func connectToPeer(wg *sync.WaitGroup, ip string, pendingPeerChan chan common.Pe
 }
 
 // managePeer handles individual peer connections and communication
-func managePeer(ctx context.Context, peerCtx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, peer *common.Peer) {
+func managePeer(ctx context.Context, peerCtx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, peer *common.Peer, chain Chain) {
 	var peerWg sync.WaitGroup
 	var listenerWg sync.WaitGroup
 
@@ -267,7 +267,7 @@ func managePeer(ctx context.Context, peerCtx context.Context, cancel context.Can
 	RequestResponseChan := make(chan common.MessageRequest)
 
 	peerWg.Add(2)
-	go handleIncoming(peerCtx, cancel, &peerWg, &listenerWg, peer, RequestResponseChan)
+	go handleIncoming(peerCtx, cancel, &peerWg, &listenerWg, peer, RequestResponseChan, chain)
 	go handleOutgoing(peerCtx, &peerWg, peer, RequestResponseChan)
 }
 
@@ -327,7 +327,7 @@ func peerListener(peerCtx context.Context, cancel context.CancelFunc, listenerWg
 }
 
 // handleIncoming processes incoming messages for a peer
-func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *sync.WaitGroup, listenerWg *sync.WaitGroup, peer *common.Peer, RequestResponseChan chan common.MessageRequest) {
+func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *sync.WaitGroup, listenerWg *sync.WaitGroup, peer *common.Peer, RequestResponseChan chan common.MessageRequest, chain Chain) {
 	defer peerWg.Done()
 
 	// Channel for incoming messages
@@ -383,7 +383,7 @@ func handleIncoming(peerCtx context.Context, cancel context.CancelFunc, peerWg *
 				}
 			} else {
 				// Handle request: generate and send response
-				response := respondToMessage(received, peer)
+				response := respondToMessage(received, peer, chain)
 				sendResp := common.MessageRequest{
 					Message:      response,
 					ResponseChan: nil,

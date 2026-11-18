@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -18,18 +17,10 @@ const (
 )
 
 var (
-	WriteBlockChan   = make(chan WriteBlockRequest, 100) // Send a Block to have it verified and written to file
-	RequestChan      = make(chan ReadRequest)            // Send a readRequest to retrieve a specific block
-	IndexRequestChan = make(chan chan [2]uint32, 1)      // Send a channel to receive index info in it
-)
-
-var (
 	MaxTarget = [32]byte{0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	MaxTargetNBits = TargetToNBits(MaxTarget)
 )
-
-var RWMu sync.RWMutex
 
 var AllPeers map[int]*Peer = make(map[int]*Peer)
 
@@ -70,19 +61,6 @@ type Message struct {
 type MessageRequest struct {
 	Message      Message      // The request message
 	ResponseChan chan Message // Channel to receive the corresponding response
-}
-
-// ReadRequest represents a request to read a block by height
-type ReadRequest struct {
-	Heights  []int
-	Response chan [][]Block
-}
-
-// WriteBlockRequest represents a request to to write blocks, including its reason
-type WriteBlockRequest struct {
-	Blocks []Block // Blocks to be written
-	Type   string  // "sync" | "mined" | "received"
-	From   *Peer   // If received, from where
 }
 
 // MiningState tracks the different attributes of the miner

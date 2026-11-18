@@ -48,33 +48,6 @@ func (b Block) Hash() [32]byte {
 
 // FUNCTIONS
 
-// requestBlocks requests blocks from the writer by heights
-// Returns: Blocks request by height
-func RequestBlocks(heights []int) [][]Block {
-	// Create channel to receive response
-	responseChan := make(chan [][]Block)
-
-	// Request heights from writer
-	RequestChan <- ReadRequest{Heights: heights, Response: responseChan}
-
-	// Return response after waiting
-	return <-responseChan
-}
-
-// requestChainStats requests chain stats from the writer
-// Returns: Latest height and total blocks
-func RequestChainStats() (int, int) {
-	// Create channel to receive response
-	responseChan := make(chan [2]uint32)
-
-	// Send request
-	IndexRequestChan <- responseChan
-
-	// Wait for response and return
-	result := <-responseChan
-	return int(result[0]), int(result[1])
-}
-
 func NewBlock(height int, prevHash [32]byte, nBits [4]byte, bodyHash [32]byte) Block {
 	return Block{
 		Height:    height,

@@ -25,42 +25,22 @@ func main() {
 	// Initialize the printer for logging to .log file
 	common.InitPrinter(ctx, &wg)
 
-	// Start the networking goroutine
-	network.NetworkManager(ctx, &wg)
-
-	// Sync chain data from own files
-	err := inout.InitFiles()
+	// Chain files are open before any peer can ask for a block.
+	heights := make(chan []int, 10)
+	chain, err := inout.Open(common.BlocksDir, heights)
 	if err != nil {
 		common.PrintToLog(fmt.Sprintf("Sync failed: %v", err))
 		cancel()
 		wg.Wait()
 		return
 	}
+	defer chain.Close()
 
-	// Chain is valid; start the block writer goroutine
-	newHeightsChan, err := inout.BlockWriter(ctx, &wg)
-	if err != nil {
-		common.PrintToLog(fmt.Sprintf("Blockwriter failed: %v", err))
-		cancel()
-		wg.Wait()
-		return
-	}
+	// Start the networking goroutine
+	network.NetworkManager(ctx, &wg, chain)
 
-	/*
-		network.FindPeers()
-
-		// Sync chain data from peers
-		err = network.SyncToPeers()
-		if err != nil {
-			common.PrintToLog(fmt.Sprintf("Syncing chain from peers failed: %v", err))
-			cancel()
-			wg.Wait()
-			return
-		}
-	*/
-
-	// Start the miner manager with the current chain height
-	consoleMineChan := mine.MinerManager(ctx, &wg, newHeightsChan)
+	// Start the miner manager with accepted heights from the chain
+	consoleMineChan := mine.MinerManager(ctx, &wg, chain, heights)
 
 	fmt.Println("Program running in headless mode. Type 'ui' to launch the GUI, or 'exit' to quit.")
 
@@ -84,7 +64,7 @@ func main() {
 			enteredUI := false
 			switch {
 			case input == "ui" && !enteredUI:
-				ui.RunUI(ctx, cancel, &wg, consoleMineChan)
+				ui.RunUI(ctx, cancel, &wg, consoleMineChan, chain)
 				enteredUI = true
 			case input == "exit":
 				cancel()

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"os"
 	"pareme/src/common"
 	"sort"
 	"time"
@@ -18,12 +17,23 @@ const (
 	maxDifficultyRatio float64 = 4                                    // Maximum allowed difficulty adjustment ratio
 )
 
+// DifficultyHeights lists the heights CalculateDifficulty expects, oldest first.
+// The block's own height is not included.
+func DifficultyHeights(block common.Block) []int {
+	heights := make([]int, 0, adjustmentInterval+1)
+	for i := block.Height - (adjustmentInterval + 1); i < block.Height; i++ {
+		heights = append(heights, i)
+	}
+	return heights
+}
+
 // Given a potential block, calculate the expected difficulty target.
-func CalculateDifficulty(nextBlock common.Block) ([32]byte, [4]byte, error) {
+// unfilteredBlocks is one group per height from DifficultyHeights, in that order.
+func CalculateDifficulty(nextBlock common.Block, unfilteredBlocks [][]common.Block) ([32]byte, [4]byte, error) {
 	common.PrintToLog("Calculating Difficulty...")
 
 	// Get adjustment ratio for difficulty
-	ratio, err := calculateRatio(nextBlock)
+	ratio, err := calculateRatio(nextBlock, unfilteredBlocks)
 	if err != nil {
 		return [32]byte{}, [4]byte{}, fmt.Errorf("ratio calculation failed: %v", err)
 	}
@@ -60,8 +70,9 @@ func CalculateDifficulty(nextBlock common.Block) ([32]byte, [4]byte, error) {
 
 }
 
-// Complete verfication steps against given blocks
-func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]common.Block, []common.Block, []common.Block, error) {
+// Complete verfication steps against given blocks.
+// fileBlocks are the ancestor blocks already loaded for the batch, flattened in height order.
+func verifyBlocks(fileBlocks []common.Block, blocks []common.Block) ([]common.Block, []common.Block, []common.Block, error) {
 	var verified, failed, orphaned []common.Block
 
 	// Handle genesis block case
@@ -101,20 +112,6 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]
 	cutoff := 0
 	if maxAB(0, blocks[0].Height-11) == 0 {
 		cutoff = 11 - (blocks[0].Height - 1)
-	}
-
-	// Fetch last 11 blocks from chain
-	fileHeights := make([]int, 0, 11-cutoff)
-	for i := maxAB(1, blocks[0].Height-11); i < blocks[0].Height; i++ { // Gather heights
-		fileHeights = append(fileHeights, i)
-	}
-	fileBlocksResp, err := readBlocks(datFile, dirFile, offFile, fileHeights) // Read blocks from file
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to read blocks: %v", err)
-	}
-	var fileBlocks []common.Block
-	for _, group := range fileBlocksResp {
-		fileBlocks = append(fileBlocks, group...) // flatten the response
 	}
 
 	// Prepare blocks for verification
@@ -208,17 +205,13 @@ func verifyBlocks(datFile, dirFile, offFile *os.File, blocks []common.Block) ([]
 	return verified, failed, orphaned, nil
 }
 
-func calculateRatio(block common.Block) (float64, error) {
+func calculateRatio(block common.Block, unfilteredBlocks [][]common.Block) (float64, error) {
 
 	// Gather block heights of last AdjustmentInterval
-	heights := make([]int, 0, adjustmentInterval+1)
-	for i := block.Height - (adjustmentInterval + 1); i < block.Height; i++ {
-		heights = append(heights, i)
-	}
+	heights := DifficultyHeights(block)
 	common.PrintToLog(fmt.Sprintf("Requested %v heights | first %v, last %v",
 		len(heights), heights[0], heights[len(heights)-1]))
 
-	unfilteredBlocks := common.RequestBlocks(heights)
 	if len(heights) != len(unfilteredBlocks) {
 		return 0, fmt.Errorf("mismatch between requested heights and returned blocks")
 	}

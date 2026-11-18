@@ -20,18 +20,26 @@ const (
 	syncChunkSize         = 100 // Number of blocks to request per sync chunk
 )
 
+// Chain is the store peer handlers read and submit to.
+// It lives in inout, which already calls BroadcastBlock, so this package keeps the methods it needs and does not import inout.
+type Chain interface {
+	Submit(blocks []common.Block, kind string, from *common.Peer) error
+	Read(heights []int) [][]common.Block
+	Stats() (int, int)
+}
+
 // nextReferenceID tracks the next available reference ID for request messages
 var nextReferenceID uint16 = 0
 
 // syncToPeers synchronizes the local blockchain with peers by fetching missing blocks
 // Returns an error if synchronization fails, or nil if successful, already synced, or no peers are available
-func SyncToPeers() error {
+func SyncToPeers(chain Chain) error {
 	if len(common.AllPeers) == 0 {
 		return nil
 	}
 
 	// Fetch local latest height
-	latestHeight, _ := common.RequestChainStats()
+	latestHeight, _ := chain.Stats()
 
 	// Select a peer (random pick)
 	var selectedPeer *common.Peer          // Which peer to ask
@@ -121,14 +129,9 @@ func SyncToPeers() error {
 			}
 		*/
 
-		// Prepare and send write block request
-		writeReq := common.WriteBlockRequest{
-			Blocks: blocks,
-			Type:   "sync",
-			From:   blockPeer,
+		if err := chain.Submit(blocks, "sync", blockPeer); err != nil {
+			return err
 		}
-
-		common.WriteBlockChan <- writeReq
 
 	}
 
@@ -250,7 +253,7 @@ func newMessage(kind uint8, command uint8, reference uint16, payload []byte) com
 
 // respondToMessage processes an incoming message and returns an appropriate response
 // Returns: A response Message, or an empty Message for invalid/unknown commands
-func respondToMessage(request common.Message, from *common.Peer) common.Message {
+func respondToMessage(request common.Message, from *common.Peer, chain Chain) common.Message {
 	switch request.Command {
 	case commandPing:
 		// Handle ping request: return a simple pong response with no payload
@@ -258,7 +261,7 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 
 	case commandLatestHeight:
 		// Handle height request: return current chain height as a 4-byte uint32
-		height, _ := common.RequestChainStats() // Ignore totalBlocks
+		height, _ := chain.Stats() // Ignore totalBlocks
 		buf := make([]byte, 4)
 		binary.BigEndian.PutUint32(buf, uint32(height))
 		return newMessage(messageKindResponse, commandLatestHeight, request.Reference, buf)
@@ -284,7 +287,7 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 		}
 
 		// Fetch requested blocks
-		blockGroups := common.RequestBlocks(heights)
+		blockGroups := chain.Read(heights)
 		var blocks []common.Block
 		for _, group := range blockGroups {
 			blocks = append(blocks, group...)
@@ -319,9 +322,9 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 		}
 
 		// Check for duplicate block
-		currentHeight, _ := common.RequestChainStats()
+		currentHeight, _ := chain.Stats()
 		if currentHeight >= block.Height {
-			existingBlocks := common.RequestBlocks([]int{block.Height})[0]
+			existingBlocks := chain.Read([]int{block.Height})[0]
 			for _, existing := range existingBlocks {
 				if existing.Hash() == block.Hash() {
 					// Duplicate block
@@ -334,12 +337,9 @@ func respondToMessage(request common.Message, from *common.Peer) common.Message 
 
 		// Send block to writer for processing
 		common.PrintToLog(fmt.Sprintf("Received new block %d; sending to writer", block.Height))
-		writeReq := common.WriteBlockRequest{
-			Blocks: []common.Block{block},
-			Type:   "received",
-			From:   from,
+		if err := chain.Submit([]common.Block{block}, "received", from); err != nil {
+			common.PrintToLog(fmt.Sprintf("failed to write received block %d: %v", block.Height, err))
 		}
-		common.WriteBlockChan <- writeReq
 
 		// Confirm receipt with a pong response
 		return newMessage(messageKindResponse, commandPing, request.Reference, nil)
